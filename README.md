@@ -7,7 +7,7 @@
 ## Features
 
 - 🚀 **One-command service management**: `nizam up postgres redis`
-- 📊 **Service monitoring**: `nizam status` shows health of all services  
+- 📊 **Service monitoring**: `nizam status` shows health of all services
 - 📝 **Log tailing**: `nizam logs redis` to debug issues
 - 💻 **Direct service interaction**: `nizam exec postgres psql -U user`
 - ⚙️ **Profile support**: Multiple configurations for `dev`, `test`, `ci`
@@ -38,16 +38,18 @@ nizam down
 ## Installation
 
 ### From Source
+
 ```bash
-git clone https://github.com/person/nizam.git
+git clone https://github.com/abdultolba/nizam.git
 cd nizam
 go build -o nizam
 sudo mv nizam /usr/local/bin/
 ```
 
 ### Homebrew (Coming Soon)
+
 ```bash
-brew install person/tap/nizam
+brew install abdultolba/tap/nizam
 ```
 
 ## Configuration
@@ -80,7 +82,7 @@ services:
 ## Supported Services
 
 - PostgreSQL
-- Redis  
+- Redis
 - Meilisearch
 - MongoDB
 - MySQL
@@ -95,8 +97,8 @@ services:
 🚧 **This project is in active development**
 
 - [x] Project structure
-- [ ] Core CLI commands
-- [ ] Docker integration
+- [x] Core CLI commands
+- [x] Docker integration
 - [ ] Config file parsing
 - [ ] Service definitions
 - [ ] Health checking
@@ -107,6 +109,6 @@ services:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
+<!-- ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file for details. -->
