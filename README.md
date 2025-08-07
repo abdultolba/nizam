@@ -97,13 +97,16 @@ services:
 🚧 **This project is in active development**
 
 - [x] Project structure
-- [x] Core CLI commands
+- [x] Core CLI commands (`init`, `up`, `down`, `status`, `logs`, `exec`)
 - [x] Docker integration
-- [ ] Config file parsing
-- [ ] Service definitions
-- [ ] Health checking
-- [ ] Log streaming
+- [x] Config file parsing
+- [x] Service definitions
+- [x] Basic health checking
+- [x] Log streaming
 - [ ] Profile management
+- [ ] Advanced health checks
+- [ ] Service templates
+- [ ] Network management
 
 ## Contributing
 

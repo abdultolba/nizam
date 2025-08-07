@@ -83,3 +83,7 @@ ehthumbs.db
 
 # Planning documents
 concept.md
+
+# Generated nizam config files
+.nizam.yaml
+.nizam.yml
