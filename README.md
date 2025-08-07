@@ -117,7 +117,7 @@ nizam includes 16+ built-in service templates for popular development tools:
 ### Using Templates
 
 ```bash
-# List all available templates
+# List all available templates (built-in + custom)
 nizam templates
 
 # Filter templates by category
@@ -127,6 +127,32 @@ nizam templates --tag database
 nizam add postgres
 nizam add redis --name cache
 ```
+
+### Custom Templates
+
+Create and manage your own reusable service templates:
+
+```bash
+# Export existing service as custom template
+nizam export mysql --name company-mysql --description "Our standard MySQL setup"
+
+# List custom templates only
+nizam template list
+
+# View detailed template information
+nizam template show company-mysql
+
+# Use custom template in another project
+nizam add company-mysql
+
+# Delete custom template
+nizam template delete company-mysql
+
+# Show custom templates directory
+nizam template dir
+```
+
+Custom templates are stored in `~/.nizam/templates/` and can be shared between projects or with your team.
 
 ## Development Status
 
@@ -140,6 +166,7 @@ nizam add redis --name cache
 - [x] Basic health checking
 - [x] Log streaming
 - [x] Service templates (16 built-in templates)
+- [x] Custom user templates (export, import, manage)
 - [ ] Profile management
 - [ ] Advanced health checks
 - [ ] Network management

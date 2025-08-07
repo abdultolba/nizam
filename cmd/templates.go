@@ -37,7 +37,7 @@ Use --show-tags to see all available tags.`,
 }
 
 func listAllTemplates() error {
-	allTemplates := templates.GetBuiltinTemplates()
+	allTemplates := templates.GetAllTemplates()
 	
 	if len(allTemplates) == 0 {
 		fmt.Println("No templates available.")
@@ -47,19 +47,36 @@ func listAllTemplates() error {
 	fmt.Printf("📋 Available Service Templates (%d total)\n\n", len(allTemplates))
 
 	// Sort templates by name for consistent output
-	templateNames := templates.GetTemplateNames()
+	templateNames := templates.GetAllTemplateNames()
 	sort.Strings(templateNames)
 
 	for _, name := range templateNames {
 		template := allTemplates[name]
 		
-		// Format tags
+		// Format tags, highlighting custom templates
 		tagStr := ""
+		isCustom := contains(template.Tags, "custom")
+		
 		if len(template.Tags) > 0 {
-			tagStr = fmt.Sprintf(" [%s]", strings.Join(template.Tags, ", "))
+			// Filter out "custom" tag for display
+			displayTags := make([]string, 0, len(template.Tags))
+			for _, tag := range template.Tags {
+				if tag != "custom" {
+					displayTags = append(displayTags, tag)
+				}
+			}
+			if len(displayTags) > 0 {
+				tagStr = fmt.Sprintf(" [%s]", strings.Join(displayTags, ", "))
+			}
+		}
+		
+		// Add custom indicator
+		customIndicator := ""
+		if isCustom {
+			customIndicator = " 🔧"
 		}
 
-		fmt.Printf("  %-15s - %s%s\n", name, template.Description, tagStr)
+		fmt.Printf("  %-15s - %s%s%s\n", name, template.Description, tagStr, customIndicator)
 	}
 
 	fmt.Println("\n💡 Use 'nizam add <template>' to add a service from a template")
@@ -70,7 +87,7 @@ func listAllTemplates() error {
 }
 
 func listTemplatesByTag(tag string) error {
-	filteredTemplates := templates.GetTemplatesByTag(tag)
+	filteredTemplates := templates.GetAllTemplatesByTag(tag)
 	
 	if len(filteredTemplates) == 0 {
 		fmt.Printf("No templates found with tag '%s'\n", tag)
@@ -119,7 +136,7 @@ func listTags() error {
 	fmt.Printf("🏷️  Available Template Tags (%d total)\n\n", len(allTags))
 
 	for _, tag := range allTags {
-		templateCount := len(templates.GetTemplatesByTag(tag))
+		templateCount := len(templates.GetAllTemplatesByTag(tag))
 		fmt.Printf("  %-15s (%d template%s)\n", tag, templateCount, func() string {
 			if templateCount != 1 {
 				return "s"
@@ -131,6 +148,16 @@ func listTags() error {
 	fmt.Println("\n💡 Use 'nizam templates --tag <tag>' to filter templates by tag")
 
 	return nil
+}
+
+// contains checks if a slice contains a string
+func contains(slice []string, str string) bool {
+	for _, s := range slice {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {
