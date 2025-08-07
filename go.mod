@@ -1,4 +1,4 @@
-module github.com/person/nizam
+module github.com/abdultolba/nizam
 
 go 1.21
 
