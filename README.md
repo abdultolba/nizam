@@ -17,8 +17,11 @@
 ## Quick Start
 
 ```bash
-# Initialize a new nizam config
+# Initialize a new nizam config (default: postgres, redis, meilisearch)
 nizam init
+
+# Or initialize with custom services
+nizam init --add "mysql, mongodb, prometheus"
 
 # Browse available service templates
 nizam templates
@@ -26,6 +29,10 @@ nizam templates
 # Add services from templates
 nizam add mysql
 nizam add redis --name cache
+
+# Remove services from configuration
+nizam remove mysql
+nizam remove redis postgres --force
 
 # Start services
 nizam up mysql cache
@@ -182,12 +189,61 @@ nizam custom dir
 
 Custom templates are stored in `~/.nizam/templates/` and can be shared between projects or with your team.
 
+## Service Management Commands
+
+### Initialization
+
+```bash
+# Initialize with default services (postgres, redis, meilisearch)
+nizam init
+
+# Initialize with custom services
+nizam init --add postgres,mysql,redis
+nizam init --add "mongodb, prometheus, mailhog"
+```
+
+The `init` command always uses default values for template variables to ensure quick setup. Use `nizam add` afterward for interactive configuration.
+
+### Adding Services
+
+```bash
+# Add with interactive configuration
+nizam add postgres
+
+# Add with default values
+nizam add mysql --defaults
+
+# Add with custom name
+nizam add redis --name cache
+```
+
+### Removing Services
+
+```bash
+# Remove single service (stops container and removes from config)
+nizam remove postgres
+
+# Remove multiple services
+nizam remove redis mysql
+
+# Remove all services
+nizam remove --all
+
+# Force removal without confirmation
+nizam remove postgres --force
+
+# Using alias
+nizam rm postgres
+```
+
+The `remove` command automatically stops running Docker containers before removing services from the configuration.
+
 ## Development Status
 
 🚧 **This project is in active development**
 
 - [x] Project structure
-- [x] Core CLI commands (`init`, `up`, `down`, `status`, `logs`, `exec`, `add`)
+- [x] Core CLI commands (`init`, `up`, `down`, `status`, `logs`, `exec`, `add`, `remove`)
 - [x] Docker integration
 - [x] Config file parsing
 - [x] Service definitions
