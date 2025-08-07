@@ -19,17 +19,24 @@
 # Initialize a new nizam config
 nizam init
 
-# Start services defined in .nizam.yaml
-nizam up postgres redis
+# Browse available service templates
+nizam templates
+
+# Add services from templates
+nizam add mysql
+nizam add redis --name cache
+
+# Start services
+nizam up mysql cache
 
 # Check service status
 nizam status
 
 # View logs
-nizam logs postgres
+nizam logs mysql
 
 # Execute commands in service containers
-nizam exec postgres psql -U user
+nizam exec mysql mysql -u user -p
 
 # Stop all services
 nizam down
@@ -79,18 +86,47 @@ services:
       - 7700:7700
 ```
 
-## Supported Services
+## Service Templates
 
-- PostgreSQL
-- Redis
-- Meilisearch
-- MongoDB
-- MySQL
-- Elasticsearch
-- RabbitMQ
-- Kafka (via Redpanda)
-- MinIO
-- NATS
+nizam includes 16+ built-in service templates for popular development tools:
+
+**Databases:**
+- `postgres` / `postgres-15` - PostgreSQL database
+- `mysql` - MySQL database  
+- `mongodb` - MongoDB document database
+- `redis` / `redis-stack` - Redis cache and data store
+- `elasticsearch` - Elasticsearch search engine
+
+**Messaging & Streaming:**
+- `rabbitmq` - RabbitMQ message broker
+- `kafka` - Apache Kafka (via Redpanda)
+- `nats` - NATS messaging system
+
+**Monitoring & Observability:**
+- `prometheus` - Prometheus metrics collection
+- `grafana` - Grafana visualization
+- `jaeger` - Distributed tracing
+
+**Storage & Search:**
+- `minio` - S3-compatible object storage
+- `meilisearch` - Fast search engine
+
+**Development Tools:**
+- `mailhog` - Email testing
+
+### Using Templates
+
+```bash
+# List all available templates
+nizam templates
+
+# Filter templates by category
+nizam templates --tag database
+
+# Add a service from a template
+nizam add postgres
+nizam add redis --name cache
+```
 
 ## Development Status
 
@@ -103,9 +139,9 @@ services:
 - [x] Service definitions
 - [x] Basic health checking
 - [x] Log streaming
+- [x] Service templates (16 built-in templates)
 - [ ] Profile management
 - [ ] Advanced health checks
-- [ ] Service templates
 - [ ] Network management
 
 ## Contributing
