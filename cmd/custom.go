@@ -9,14 +9,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var templateCmd = &cobra.Command{
-	Use:   "template",
+var customCmd = &cobra.Command{
+	Use:   "custom",
 	Short: "Manage custom templates",
 	Long: `Manage custom service templates including deleting, viewing, and listing custom templates.
 Custom templates are stored in ~/.nizam/templates/ and can be shared between projects.`,
 }
 
-var templateDeleteCmd = &cobra.Command{
+var customDeleteCmd = &cobra.Command{
 	Use:   "delete <template-name>",
 	Short: "Delete a custom template",
 	Long: `Delete a custom template from your templates directory.
@@ -35,7 +35,7 @@ Note: You cannot delete built-in templates.`,
 	},
 }
 
-var templateListCmd = &cobra.Command{
+var customListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List custom templates only",
 	Long:  `List only your custom templates. Use 'nizam templates' to see all templates.`,
@@ -73,13 +73,13 @@ var templateListCmd = &cobra.Command{
 		}
 
 		fmt.Println("\n💡 Use 'nizam add <template>' to use a custom template")
-		fmt.Println("💡 Use 'nizam template delete <name>' to remove a custom template")
+		fmt.Println("💡 Use 'nizam custom delete <name>' to remove a custom template")
 
 		return nil
 	},
 }
 
-var templateShowCmd = &cobra.Command{
+var customShowCmd = &cobra.Command{
 	Use:   "show <template-name>",
 	Short: "Show detailed information about a template",
 	Long:  `Display detailed configuration information for a template (built-in or custom).`,
@@ -145,7 +145,7 @@ var templateShowCmd = &cobra.Command{
 	},
 }
 
-var templateDirCmd = &cobra.Command{
+var customDirCmd = &cobra.Command{
 	Use:   "dir",
 	Short: "Show the custom templates directory path",
 	Long:  `Display the path where custom templates are stored and optionally open it.`,
@@ -180,12 +180,12 @@ func templateContains(slice []string, str string) bool {
 }
 
 func init() {
-	// Add subcommands to template command
-	templateCmd.AddCommand(templateDeleteCmd)
-	templateCmd.AddCommand(templateListCmd)
-	templateCmd.AddCommand(templateShowCmd)
-	templateCmd.AddCommand(templateDirCmd)
+	// Add subcommands to custom command
+	customCmd.AddCommand(customDeleteCmd)
+	customCmd.AddCommand(customListCmd)
+	customCmd.AddCommand(customShowCmd)
+	customCmd.AddCommand(customDirCmd)
 
-	// Add template command to root
-	rootCmd.AddCommand(templateCmd)
+	// Add custom command to root
+	rootCmd.AddCommand(customCmd)
 }

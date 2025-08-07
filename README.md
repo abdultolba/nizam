@@ -137,19 +137,19 @@ Create and manage your own reusable service templates:
 nizam export mysql --name company-mysql --description "Our standard MySQL setup"
 
 # List custom templates only
-nizam template list
+nizam custom list
 
 # View detailed template information
-nizam template show company-mysql
+nizam custom show company-mysql
 
 # Use custom template in another project
 nizam add company-mysql
 
 # Delete custom template
-nizam template delete company-mysql
+nizam custom delete company-mysql
 
 # Show custom templates directory
-nizam template dir
+nizam custom dir
 ```
 
 Custom templates are stored in `~/.nizam/templates/` and can be shared between projects or with your team.
