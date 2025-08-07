@@ -7,6 +7,7 @@
 ## Features
 
 - 🚀 **One-command service management**: `nizam up postgres redis`
+- 🖥️ **Interactive TUI**: Full-featured terminal interface for visual service management
 - 🎛️ **Interactive template configuration**: Customize ports, credentials, and settings
 - 📊 **Service monitoring**: `nizam status` shows health of all services
 - 📝 **Log tailing**: `nizam logs redis` to debug issues
@@ -49,6 +50,142 @@ nizam exec mysql mysql -u user -p
 # Stop all services
 nizam down
 ```
+
+## Interactive TUI (Terminal User Interface)
+
+nizam includes a beautiful, cyberpunk-themed terminal interface for visual service management. The TUI provides an immersive experience with real-time monitoring and full operational capabilities.
+
+### Launching the TUI
+
+```bash
+# Launch the enhanced TUI (default - with real Docker operations)
+nizam tui
+
+# Launch demo mode (for exploration without Docker operations)
+nizam tui --demo
+
+# Enable debug mode
+nizam tui --debug
+```
+
+### TUI Features
+
+🎨 **Tron-Inspired Design**
+- Cyberpunk aesthetic with cyan, blue, purple, and pink accents
+- Animated status indicators and smooth transitions
+- ASCII art logo and professional layout
+
+⚡ **Real Docker Operations**
+- Start, stop, restart services directly from the interface
+- Add new services from templates with interactive prompts
+- Remove services with safety confirmations
+- Live monitoring with auto-refresh every 30 seconds
+
+🖥️ **Multiple Views**
+- **Dashboard (1)**: Service overview with quick actions
+- **Services (2)**: Detailed service management table
+- **Logs (3)**: Real-time log streaming and filtering
+- **Templates (4)**: Browse and add services from templates
+- **Config (5)**: Live configuration viewing and management
+
+### Navigation & Controls
+
+#### Global Navigation
+```
+1-5            Switch between views
+Tab/Shift+Tab  Navigate panels/buttons
+h or ?         Toggle help screen
+r              Refresh services (live data)
+q or Ctrl+C    Quit application
+/              Search services/templates
+Esc            Clear search or go back
+```
+
+#### Dashboard View
+```
+Tab/Shift+Tab  Navigate between quick action buttons
+Enter/Space    Execute selected quick action:
+               • Start All Services
+               • Stop All Services  
+               • Refresh Data
+               • Add New Service (goes to Templates)
+```
+
+#### Services View
+```
+↑/↓ or j/k     Navigate service list
+s              Start selected service
+x              Stop selected service
+R              Restart selected service
+d or Delete    Remove selected service (with confirmation)
+Enter          View logs for selected service
+```
+
+#### Logs View
+```
+↑/↓ or j/k     Select service for log viewing
+Enter          Start/stop real-time log streaming
+c              Clear current logs
+f              Filter logs (search within log content)
+```
+
+#### Templates View
+```
+↑/↓ or j/k     Navigate template list
+Enter or a     Add service from selected template
+               (opens interactive prompt for service name)
+```
+
+### TUI Screenshots
+
+The TUI features a distinctive Tron-themed interface:
+
+```
+███╗   ██╗██╗███████╗ █████╗ ███╗   ███╗
+████╗  ██║██║╚══███╔╝██╔══██╗████╗ ████║
+██╔██╗ ██║██║  ███╔╝ ███████║██╔████╔██║
+██║╚██╗██║██║ ███╔╝  ██╔══██║██║╚██╔╝██║
+██║ ╚████║██║███████╗██║  ██║██║ ╚═╝ ██║
+╚═╝  ╚═══╝╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝
+
+Enhanced Service Manager - Full Docker Operations
+
+┌─ Dashboard (1) ─┬─ Services (2) ─┬─ Logs (3) ─┬─ Templates (4) ─┬─ Config (5) ─┐
+```
+
+### Safety Features
+
+The TUI includes built-in safety mechanisms:
+
+- **Confirmation Dialogs**: All destructive operations require confirmation
+- **Input Validation**: Service names and parameters are validated in real-time
+- **Error Handling**: Clear error messages with helpful suggestions
+- **Graceful Fallback**: Demo mode available if Docker is unavailable
+
+### TUI vs CLI
+
+| Feature | CLI Commands | Enhanced TUI |
+|---------|-------------|--------------|
+| **Service Operations** | `nizam up/down/restart` | ✅ Direct interface operations |
+| **Real-time Monitoring** | `nizam status` (snapshot) | ✅ Live updates every 30s |
+| **Log Viewing** | `nizam logs <service>` | ✅ Interactive log streaming |
+| **Service Creation** | `nizam add <template>` | ✅ Visual template browser |
+| **Configuration** | Edit `.nizam.yaml` | ✅ Live config viewing |
+| **Batch Operations** | Multiple commands | ✅ Single interface |
+| **Learning Curve** | Command memorization | ✅ Visual guidance |
+
+**When to use TUI:**
+- 🎮 Prefer visual interface over command line
+- 🔄 Need real-time monitoring
+- 🚀 Want one-stop service management
+- 📚 Learning nizam features
+- 🎯 Managing multiple services frequently
+
+**When to use CLI:**
+- 🤖 Scripting and automation
+- 🚀 Single, quick operations
+- 📱 Working in constrained terminals
+- 🔧 Integration with other tools
 
 ## Installation
 
@@ -252,6 +389,15 @@ The `remove` command automatically stops running Docker containers before removi
 - [x] Service templates (16 built-in templates)
 - [x] Interactive template variables (postgres, mysql, redis, mongodb, rabbitmq)
 - [x] Custom user templates (export, import, manage)
+- [x] **Interactive TUI**: Full-featured terminal interface with real Docker operations
+  - [x] Tron-themed cyberpunk design with animated status indicators
+  - [x] Live service monitoring with auto-refresh
+  - [x] Direct service operations (start, stop, restart, remove)
+  - [x] Interactive service creation from templates
+  - [x] Real-time log streaming and filtering
+  - [x] Safety confirmations and input validation
+  - [x] Search and filtering capabilities
+  - [x] Demo mode for exploration without Docker
 - [ ] Profile management
 - [ ] Advanced health checks
 - [ ] Network management

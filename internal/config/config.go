@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,10 +35,16 @@ type HealthCheck struct {
 
 // LoadConfig loads the configuration from file or returns defaults
 func LoadConfig() (*Config, error) {
-	config := &Config{}
+	// Read the YAML file directly to preserve key case
+	configPath := GetConfigPath()
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
 
-	if err := viper.Unmarshal(config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	var config Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	// Set default profile if not specified
@@ -47,7 +52,7 @@ func LoadConfig() (*Config, error) {
 		config.Profile = "dev"
 	}
 
-	return config, nil
+	return &config, nil
 }
 
 // GenerateDefaultConfig creates a default .nizam.yaml file
