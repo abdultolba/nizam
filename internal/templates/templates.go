@@ -1,10 +1,15 @@
 package templates
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/abdultolba/nizam/internal/config"
 	"gopkg.in/yaml.v3"
@@ -16,6 +21,17 @@ type Template struct {
 	Description string         `json:"description"`
 	Service     config.Service `json:"service"`
 	Tags        []string       `json:"tags"`
+	Variables   []Variable     `json:"variables,omitempty"`
+}
+
+// Variable represents a customizable template variable
+type Variable struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Default     string `json:"default,omitempty"`
+	Required    bool   `json:"required,omitempty"`
+	Type        string `json:"type,omitempty"` // "string", "int", "bool", "port"
+	Validation  string `json:"validation,omitempty"` // regex or validation rules
 }
 
 // GetBuiltinTemplates returns all built-in service templates
@@ -27,13 +43,51 @@ func GetBuiltinTemplates() map[string]Template {
 			Tags:        []string{"database", "sql", "postgres"},
 			Service: config.Service{
 				Image: "postgres:16",
-				Ports: []string{"5432:5432"},
+				Ports: []string{"{{.PORT}}:5432"},
 				Environment: map[string]string{
-					"POSTGRES_USER":     "user",
-					"POSTGRES_PASSWORD": "password",
-					"POSTGRES_DB":       "myapp",
+					"POSTGRES_USER":     "{{.DB_USER}}",
+					"POSTGRES_PASSWORD": "{{.DB_PASSWORD}}",
+					"POSTGRES_DB":       "{{.DB_NAME}}",
 				},
-				Volume: "pgdata",
+				Volume: "{{.VOLUME_NAME}}",
+			},
+			Variables: []Variable{
+				{
+					Name:        "DB_USER",
+					Description: "PostgreSQL username",
+					Default:     "user",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "DB_PASSWORD",
+					Description: "PostgreSQL password",
+					Default:     "password",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "DB_NAME",
+					Description: "Database name to create",
+					Default:     "myapp",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "PORT",
+					Description: "Host port to bind PostgreSQL",
+					Default:     "5432",
+					Required:    false,
+					Type:        "port",
+					Validation:  "^[1-9][0-9]{0,4}$",
+				},
+				{
+					Name:        "VOLUME_NAME",
+					Description: "Docker volume name for data persistence",
+					Default:     "pgdata",
+					Required:    false,
+					Type:        "string",
+				},
 			},
 		},
 		"postgres-15": {
@@ -57,14 +111,58 @@ func GetBuiltinTemplates() map[string]Template {
 			Tags:        []string{"database", "sql", "mysql"},
 			Service: config.Service{
 				Image: "mysql:8.0",
-				Ports: []string{"3306:3306"},
+				Ports: []string{"{{.PORT}}:3306"},
 				Environment: map[string]string{
-					"MYSQL_ROOT_PASSWORD": "rootpassword",
-					"MYSQL_DATABASE":      "myapp",
-					"MYSQL_USER":          "user",
-					"MYSQL_PASSWORD":      "password",
+					"MYSQL_ROOT_PASSWORD": "{{.ROOT_PASSWORD}}",
+					"MYSQL_DATABASE":      "{{.DB_NAME}}",
+					"MYSQL_USER":          "{{.DB_USER}}",
+					"MYSQL_PASSWORD":      "{{.DB_PASSWORD}}",
 				},
-				Volume: "mysqldata",
+				Volume: "{{.VOLUME_NAME}}",
+			},
+			Variables: []Variable{
+				{
+					Name:        "DB_USER",
+					Description: "MySQL username",
+					Default:     "user",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "DB_PASSWORD",
+					Description: "MySQL user password",
+					Default:     "password",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "ROOT_PASSWORD",
+					Description: "MySQL root password",
+					Default:     "rootpassword",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "DB_NAME",
+					Description: "Database name to create",
+					Default:     "myapp",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "PORT",
+					Description: "Host port to bind MySQL",
+					Default:     "3306",
+					Required:    false,
+					Type:        "port",
+				},
+				{
+					Name:        "VOLUME_NAME",
+					Description: "Docker volume name for data persistence",
+					Default:     "mysqldata",
+					Required:    false,
+					Type:        "string",
+				},
 			},
 		},
 		"redis": {
@@ -72,8 +170,39 @@ func GetBuiltinTemplates() map[string]Template {
 			Description: "Redis in-memory data store",
 			Tags:        []string{"cache", "database", "nosql", "redis"},
 			Service: config.Service{
-				Image: "redis:7",
-				Ports: []string{"6379:6379"},
+				Image: "redis:{{.VERSION}}",
+				Ports: []string{"{{.PORT}}:6379"},
+				Volume: "{{.VOLUME_NAME}}",
+			},
+			Variables: []Variable{
+				{
+					Name:        "VERSION",
+					Description: "Redis version",
+					Default:     "7",
+					Required:    false,
+					Type:        "string",
+				},
+				{
+					Name:        "PORT",
+					Description: "Host port to bind Redis",
+					Default:     "6379",
+					Required:    false,
+					Type:        "port",
+				},
+				{
+					Name:        "PASSWORD",
+					Description: "Redis password (optional)",
+					Default:     "",
+					Required:    false,
+					Type:        "string",
+				},
+				{
+					Name:        "VOLUME_NAME",
+					Description: "Docker volume name for data persistence",
+					Default:     "redisdata",
+					Required:    false,
+					Type:        "string",
+				},
 			},
 		},
 		"redis-stack": {
@@ -90,13 +219,50 @@ func GetBuiltinTemplates() map[string]Template {
 			Description: "MongoDB document database",
 			Tags:        []string{"database", "nosql", "mongodb"},
 			Service: config.Service{
-				Image: "mongo:7",
-				Ports: []string{"27017:27017"},
+				Image: "mongo:{{.VERSION}}",
+				Ports: []string{"{{.PORT}}:27017"},
 				Environment: map[string]string{
-					"MONGO_INITDB_ROOT_USERNAME": "admin",
-					"MONGO_INITDB_ROOT_PASSWORD": "password",
+					"MONGO_INITDB_ROOT_USERNAME": "{{.ROOT_USERNAME}}",
+					"MONGO_INITDB_ROOT_PASSWORD": "{{.ROOT_PASSWORD}}",
 				},
-				Volume: "mongodata",
+				Volume: "{{.VOLUME_NAME}}",
+			},
+			Variables: []Variable{
+				{
+					Name:        "VERSION",
+					Description: "MongoDB version",
+					Default:     "7",
+					Required:    false,
+					Type:        "string",
+				},
+				{
+					Name:        "ROOT_USERNAME",
+					Description: "MongoDB root username",
+					Default:     "admin",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "ROOT_PASSWORD",
+					Description: "MongoDB root password",
+					Default:     "password",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "PORT",
+					Description: "Host port to bind MongoDB",
+					Default:     "27017",
+					Required:    false,
+					Type:        "port",
+				},
+				{
+					Name:        "VOLUME_NAME",
+					Description: "Docker volume name for data persistence",
+					Default:     "mongodata",
+					Required:    false,
+					Type:        "string",
+				},
 			},
 		},
 		"elasticsearch": {
@@ -131,13 +297,57 @@ func GetBuiltinTemplates() map[string]Template {
 			Description: "RabbitMQ message broker",
 			Tags:        []string{"messaging", "rabbitmq", "amqp"},
 			Service: config.Service{
-				Image: "rabbitmq:3-management",
-				Ports: []string{"5672:5672", "15672:15672"},
+				Image: "rabbitmq:{{.VERSION}}",
+				Ports: []string{"{{.AMQP_PORT}}:5672", "{{.MANAGEMENT_PORT}}:15672"},
 				Environment: map[string]string{
-					"RABBITMQ_DEFAULT_USER": "admin",
-					"RABBITMQ_DEFAULT_PASS": "password",
+					"RABBITMQ_DEFAULT_USER": "{{.DEFAULT_USER}}",
+					"RABBITMQ_DEFAULT_PASS": "{{.DEFAULT_PASS}}",
 				},
-				Volume: "rabbitmqdata",
+				Volume: "{{.VOLUME_NAME}}",
+			},
+			Variables: []Variable{
+				{
+					Name:        "VERSION",
+					Description: "RabbitMQ version (with management plugin)",
+					Default:     "3-management",
+					Required:    false,
+					Type:        "string",
+				},
+				{
+					Name:        "DEFAULT_USER",
+					Description: "RabbitMQ default username",
+					Default:     "admin",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "DEFAULT_PASS",
+					Description: "RabbitMQ default password",
+					Default:     "password",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "AMQP_PORT",
+					Description: "Host port for AMQP protocol",
+					Default:     "5672",
+					Required:    false,
+					Type:        "port",
+				},
+				{
+					Name:        "MANAGEMENT_PORT",
+					Description: "Host port for management UI",
+					Default:     "15672",
+					Required:    false,
+					Type:        "port",
+				},
+				{
+					Name:        "VOLUME_NAME",
+					Description: "Docker volume name for data persistence",
+					Default:     "rabbitmqdata",
+					Required:    false,
+					Type:        "string",
+				},
 			},
 		},
 		"kafka": {
@@ -452,4 +662,189 @@ func contains(slice []string, str string) bool {
 		}
 	}
 	return false
+}
+
+// ProcessTemplateWithVariables processes a template by prompting for variables and substituting them
+func ProcessTemplateWithVariables(tmpl Template, serviceName string) (config.Service, error) {
+	if len(tmpl.Variables) == 0 {
+		// No variables to process, return service as-is
+		return tmpl.Service, nil
+	}
+
+	fmt.Printf("\n⚙️  Configuring template '%s' for service '%s'\n", tmpl.Name, serviceName)
+	fmt.Printf("📝 Please provide values for the following variables:\n\n")
+
+	// Collect variable values from user
+	variableValues := make(map[string]string)
+	reader := bufio.NewReader(os.Stdin)
+
+	for _, variable := range tmpl.Variables {
+		value, err := promptForVariable(variable, reader)
+		if err != nil {
+			return config.Service{}, fmt.Errorf("failed to get variable '%s': %w", variable.Name, err)
+		}
+		variableValues[variable.Name] = value
+	}
+
+	// Process the template with the collected values
+	processedService, err := substituteVariables(tmpl.Service, variableValues)
+	if err != nil {
+		return config.Service{}, fmt.Errorf("failed to process template: %w", err)
+	}
+
+	fmt.Printf("\n✅ Template configured successfully!\n")
+	return processedService, nil
+}
+
+// promptForVariable prompts the user for a variable value with validation
+func promptForVariable(variable Variable, reader *bufio.Reader) (string, error) {
+	// Display prompt
+	requiredIndicator := ""
+	if variable.Required {
+		requiredIndicator = " *"
+	}
+
+	defaultDisplay := ""
+	if variable.Default != "" {
+		defaultDisplay = fmt.Sprintf(" [%s]", variable.Default)
+	}
+
+	fmt.Printf("  %s%s: %s%s\n", variable.Name, requiredIndicator, variable.Description, defaultDisplay)
+	if variable.Type != "" {
+		fmt.Printf("    Type: %s", variable.Type)
+		if variable.Validation != "" {
+			fmt.Printf(" (pattern: %s)", variable.Validation)
+		}
+		fmt.Println()
+	}
+
+	for {
+		fmt.Printf("    > ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("failed to read input: %w", err)
+		}
+
+		value := strings.TrimSpace(input)
+
+		// Use default if empty and default exists
+		if value == "" {
+			if variable.Default != "" {
+				value = variable.Default
+			} else if variable.Required {
+				fmt.Printf("    ❌ This field is required. Please provide a value.\n")
+				continue
+			}
+		}
+
+		// Validate the value
+		if err := validateVariable(variable, value); err != nil {
+			fmt.Printf("    ❌ %s Please try again.\n", err)
+			continue
+		}
+
+		fmt.Printf("    ✅ %s = %s\n\n", variable.Name, value)
+		return value, nil
+	}
+}
+
+// validateVariable validates a variable value based on its type and validation rules
+func validateVariable(variable Variable, value string) error {
+	if value == "" && !variable.Required {
+		return nil // Empty is OK for non-required variables
+	}
+
+	// Type-based validation
+	switch variable.Type {
+	case "int":
+		if _, err := strconv.Atoi(value); err != nil {
+			return fmt.Errorf("invalid integer value '%s'", value)
+		}
+	case "port":
+		port, err := strconv.Atoi(value)
+		if err != nil {
+			return fmt.Errorf("invalid port number '%s'", value)
+		}
+		if port < 1 || port > 65535 {
+			return fmt.Errorf("port number must be between 1 and 65535")
+		}
+	case "bool":
+		lowerValue := strings.ToLower(value)
+		if lowerValue != "true" && lowerValue != "false" && lowerValue != "yes" && lowerValue != "no" {
+			return fmt.Errorf("boolean value must be true/false or yes/no")
+		}
+	}
+
+	// Regex validation if provided
+	if variable.Validation != "" {
+		matched, err := regexp.MatchString(variable.Validation, value)
+		if err != nil {
+			return fmt.Errorf("invalid validation pattern: %w", err)
+		}
+		if !matched {
+			return fmt.Errorf("value doesn't match required pattern")
+		}
+	}
+
+	return nil
+}
+
+// substituteVariables substitutes template variables in a service configuration
+func substituteVariables(service config.Service, variables map[string]string) (config.Service, error) {
+	// Convert service to YAML, substitute variables, then convert back
+	yamlData, err := yaml.Marshal(&service)
+	if err != nil {
+		return service, fmt.Errorf("failed to marshal service: %w", err)
+	}
+
+	// Create template and execute substitution
+	tmpl, err := template.New("service").Parse(string(yamlData))
+	if err != nil {
+		return service, fmt.Errorf("failed to parse service template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, variables); err != nil {
+		return service, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	// Unmarshal back to service struct
+	var processedService config.Service
+	if err := yaml.Unmarshal(buf.Bytes(), &processedService); err != nil {
+		return service, fmt.Errorf("failed to unmarshal processed service: %w", err)
+	}
+
+	return processedService, nil
+}
+
+// HasVariables returns true if the template has customizable variables
+func (t Template) HasVariables() bool {
+	return len(t.Variables) > 0
+}
+
+// ProcessTemplateWithDefaults processes a template using only default values
+func ProcessTemplateWithDefaults(tmpl Template) (config.Service, error) {
+	if len(tmpl.Variables) == 0 {
+		// No variables to process, return service as-is
+		return tmpl.Service, nil
+	}
+
+	// Collect default values
+	variableValues := make(map[string]string)
+	for _, variable := range tmpl.Variables {
+		if variable.Default != "" {
+			variableValues[variable.Name] = variable.Default
+		} else if variable.Required {
+			return config.Service{}, fmt.Errorf("required variable '%s' has no default value", variable.Name)
+		}
+		// For non-required variables without defaults, we leave them empty
+	}
+
+	// Process the template with default values
+	processedService, err := substituteVariables(tmpl.Service, variableValues)
+	if err != nil {
+		return config.Service{}, fmt.Errorf("failed to process template with defaults: %w", err)
+	}
+
+	return processedService, nil
 }

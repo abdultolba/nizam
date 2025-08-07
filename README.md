@@ -7,6 +7,7 @@
 ## Features
 
 - 🚀 **One-command service management**: `nizam up postgres redis`
+- 🎛️ **Interactive template configuration**: Customize ports, credentials, and settings
 - 📊 **Service monitoring**: `nizam status` shows health of all services
 - 📝 **Log tailing**: `nizam logs redis` to debug issues
 - 💻 **Direct service interaction**: `nizam exec postgres psql -U user`
@@ -91,27 +92,32 @@ services:
 nizam includes 16+ built-in service templates for popular development tools:
 
 **Databases:**
+
 - `postgres` / `postgres-15` - PostgreSQL database
-- `mysql` - MySQL database  
+- `mysql` - MySQL database
 - `mongodb` - MongoDB document database
 - `redis` / `redis-stack` - Redis cache and data store
 - `elasticsearch` - Elasticsearch search engine
 
 **Messaging & Streaming:**
+
 - `rabbitmq` - RabbitMQ message broker
 - `kafka` - Apache Kafka (via Redpanda)
 - `nats` - NATS messaging system
 
 **Monitoring & Observability:**
+
 - `prometheus` - Prometheus metrics collection
 - `grafana` - Grafana visualization
 - `jaeger` - Distributed tracing
 
 **Storage & Search:**
+
 - `minio` - S3-compatible object storage
 - `meilisearch` - Fast search engine
 
 **Development Tools:**
+
 - `mailhog` - Email testing
 
 ### Using Templates
@@ -127,6 +133,28 @@ nizam templates --tag database
 nizam add postgres
 nizam add redis --name cache
 ```
+
+### Interactive Template Variables
+
+Key templates support interactive configuration of ports, credentials, and settings:
+
+```bash
+# Add with interactive prompts (PostgreSQL, MySQL, Redis, MongoDB, RabbitMQ, etc.)
+nizam add postgres    # You'll be prompted for username, password, port, etc.
+
+# Skip prompts and use default values
+nizam add postgres --defaults
+
+# Add with custom name and interactive config
+nizam add mysql --name production-db
+```
+
+Interactive features include:
+
+- Clear variable descriptions with purpose and usage
+- Default value suggestions shown in brackets
+- Required field indicators and type validation
+- Real-time validation with helpful error messages
 
 ### Custom Templates
 
@@ -159,13 +187,14 @@ Custom templates are stored in `~/.nizam/templates/` and can be shared between p
 🚧 **This project is in active development**
 
 - [x] Project structure
-- [x] Core CLI commands (`init`, `up`, `down`, `status`, `logs`, `exec`)
+- [x] Core CLI commands (`init`, `up`, `down`, `status`, `logs`, `exec`, `add`)
 - [x] Docker integration
 - [x] Config file parsing
 - [x] Service definitions
 - [x] Basic health checking
 - [x] Log streaming
 - [x] Service templates (16 built-in templates)
+- [x] Interactive template variables (postgres, mysql, redis, mongodb, rabbitmq)
 - [x] Custom user templates (export, import, manage)
 - [ ] Profile management
 - [ ] Advanced health checks
