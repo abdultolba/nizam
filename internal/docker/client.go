@@ -7,12 +7,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/abdultolba/nizam/internal/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/person/nizam/internal/config"
 	"github.com/rs/zerolog/log"
 )
 
