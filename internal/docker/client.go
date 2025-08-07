@@ -196,7 +196,7 @@ func (c *Client) GetServiceStatus(ctx context.Context) ([]ContainerInfo, error) 
 }
 
 // GetServiceLogs returns logs for a specific service
-func (c *Client) GetServiceLogs(ctx context.Context, serviceName string, follow bool) (io.ReadCloser, error) {
+func (c *Client) GetServiceLogs(ctx context.Context, serviceName string, follow bool, tail string) (io.ReadCloser, error) {
 	containerName := fmt.Sprintf("nizam_%s", serviceName)
 
 	options := types.ContainerLogsOptions{
@@ -204,7 +204,7 @@ func (c *Client) GetServiceLogs(ctx context.Context, serviceName string, follow 
 		ShowStderr: true,
 		Follow:     follow,
 		Timestamps: true,
-		Tail:       "50", // Show last 50 lines by default
+		Tail:       tail,
 	}
 
 	logs, err := c.cli.ContainerLogs(ctx, containerName, options)
