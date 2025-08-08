@@ -9,13 +9,35 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/abdultolba/nizam/internal/docker"
 	"github.com/abdultolba/nizam/internal/templates"
 	"github.com/abdultolba/nizam/internal/tui/models"
+	tea "github.com/charmbracelet/bubbletea"
 	"gopkg.in/yaml.v3"
 )
+
+// Global channels for log streaming communication
+var (
+	logStreamChan    chan models.LogLineMsg
+	logStreamErrChan chan interface{}
+)
+
+// InitLogChannels initializes the log streaming channels
+func InitLogChannels() {
+	logStreamChan = make(chan models.LogLineMsg, 100)
+	logStreamErrChan = make(chan interface{}, 10)
+}
+
+// GetLogStreamChan returns the log stream channel
+func GetLogStreamChan() chan models.LogLineMsg {
+	return logStreamChan
+}
+
+// GetLogStreamErrChan returns the log error channel
+func GetLogStreamErrChan() chan interface{} {
+	return logStreamErrChan
+}
 
 // ServiceOperations handles real Docker service operations
 type ServiceOperations struct {
@@ -285,49 +307,115 @@ func (ops *ServiceOperations) RefreshServices() tea.Cmd {
 	}
 }
 
-// StreamLogs streams logs from a service
+// StreamLogs streams logs from a service using proper async handling
 func (ops *ServiceOperations) StreamLogs(serviceName string, follow bool) tea.Cmd {
 	return func() tea.Msg {
-		ctx := context.Background()
+		// Start streaming in a goroutine and return the start message
+		go ops.streamLogsAsync(serviceName, follow)
 		
-		logs, err := ops.DockerClient.GetServiceLogs(ctx, serviceName, follow, "100")
-		if err != nil {
-			return models.ErrorMsg{Error: fmt.Sprintf("Failed to get logs: %v", err)}
-		}
-		defer logs.Close()
-
-		// Read logs and send as messages
-		go func() {
-			buf := make([]byte, 1024)
-			for {
-				n, err := logs.Read(buf)
-				if err != nil {
-					if err != io.EOF {
-						// Send error
-						// Note: This would need a channel or other mechanism to send back to TUI
-					}
-					break
-				}
-				
-				line := string(buf[:n])
-				// Clean up Docker log formatting
-				if len(line) > 8 {
-					line = line[8:] // Remove Docker log prefix
-				}
-				line = strings.TrimSpace(line)
-				
-				if line != "" {
-					// Send log line - would need proper message passing mechanism
-					// This is a simplified version
-				}
-			}
-		}()
-
 		return models.LogStreamStartMsg{ServiceName: serviceName}
 	}
 }
 
+// streamLogsAsync handles the actual log streaming in a separate goroutine
+func (ops *ServiceOperations) streamLogsAsync(serviceName string, follow bool) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	
+	logs, err := ops.DockerClient.GetServiceLogs(ctx, serviceName, follow, "50")
+	if err != nil {
+		// Send error message back to TUI
+		logStreamErrChan <- models.LogStreamErrorMsg{
+			ServiceName: serviceName,
+			Error:       fmt.Sprintf("Failed to get logs: %v", err),
+		}
+		return
+	}
+	defer logs.Close()
+
+	// Read logs line by line
+	buf := make([]byte, 4096)
+	var leftover []byte
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			n, err := logs.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					// End of stream
+					logStreamErrChan <- models.LogStreamStopMsg{ServiceName: serviceName}
+				} else {
+					// Error reading
+					logStreamErrChan <- models.LogStreamErrorMsg{
+						ServiceName: serviceName,
+						Error:       fmt.Sprintf("Error reading logs: %v", err),
+					}
+				}
+				return
+			}
+
+			// Combine with leftover data
+			data := append(leftover, buf[:n]...)
+			leftover = nil
+
+			// Process lines
+			lines := strings.Split(string(data), "\n")
+			
+			// Keep the last incomplete line as leftover
+			if len(lines) > 0 && !strings.HasSuffix(string(data), "\n") {
+				leftover = []byte(lines[len(lines)-1])
+				lines = lines[:len(lines)-1]
+			}
+
+			for _, line := range lines {
+				cleanLine := cleanDockerLogLine(line)
+				if cleanLine != "" {
+					// Send log line to TUI
+					select {
+					case logStreamChan <- models.LogLineMsg{
+						ServiceName: serviceName,
+						Line:        cleanLine,
+						Timestamp:   time.Now(),
+					}:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}
+	}
+}
+
+// cleanDockerLogLine removes Docker log prefixes and cleans up the line
+func cleanDockerLogLine(line string) string {
+	// Docker log format often has 8-byte header we need to skip
+	if len(line) > 8 {
+		// Check if it starts with Docker log prefix (usually has control characters)
+		if line[0] <= 2 { // Docker uses 0, 1, 2 for stdout, stdin, stderr
+			line = line[8:]
+		}
+	}
+	
+	// Clean up the line
+	line = strings.TrimSpace(line)
+	line = strings.ReplaceAll(line, "\r", "")
+	line = strings.ReplaceAll(line, "\x00", "")
+	
+	return line
+}
+
 // Helper functions
+
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 // parseDockerStatus converts Docker status to simplified status
 func parseDockerStatus(dockerStatus string) string {

@@ -15,18 +15,54 @@ import (
 
 type Model struct {
 	App models.AppModel
+	Operations *ServiceOperations
 }
 
 // NewModel creates a new TUI model
 func NewModel() Model {
+	// Initialize log channels
+	InitLogChannels()
+	
+	// Create service operations
+	ops, err := NewServiceOperations()
+	if err != nil {
+		// Handle error gracefully - could show error in TUI
+		panic(fmt.Sprintf("Failed to initialize Docker client: %v", err))
+	}
+	
 	return Model{
 		App: models.NewAppModel(),
+		Operations: ops,
 	}
 }
 
 // Init initializes the TUI
 func (m Model) Init() tea.Cmd {
-	return m.App.Init()
+	return tea.Batch(
+		m.App.Init(),
+		// Initial refresh of services
+		m.Operations.RefreshServices(),
+		// Start listening for log streams
+		m.listenForLogStreams(),
+	)
+}
+
+// listenForLogStreams creates a command to listen for log stream messages
+func (m Model) listenForLogStreams() tea.Cmd {
+	return func() tea.Msg {
+		// This function will listen to the log channels and convert to tea messages
+		logChan := GetLogStreamChan()
+		errChan := GetLogStreamErrChan()
+		
+		select {
+		case logMsg := <-logChan:
+			return logMsg
+		case errMsg := <-errChan:
+			return errMsg
+		default:
+			return nil
+		}
+	}
 }
 
 // Update handles messages and updates the model
@@ -67,12 +103,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.App.CurrentView == models.LogsView {
 				if m.App.SelectedServiceIndex > 0 {
 					m.App.SelectedServiceIndex--
+					// Start log streaming for newly selected service
+					if len(m.App.Services) > 0 {
+						selectedService := m.App.Services[m.App.SelectedServiceIndex]
+						m.App.StartLogStreaming(selectedService.Name)
+						return m, m.Operations.StreamLogs(selectedService.Name, true)
+					}
 				}
 			}
 		case "down", "j":
 			if m.App.CurrentView == models.LogsView {
 				if m.App.SelectedServiceIndex < len(m.App.Services)-1 {
 					m.App.SelectedServiceIndex++
+					// Start log streaming for newly selected service
+					if len(m.App.Services) > 0 {
+						selectedService := m.App.Services[m.App.SelectedServiceIndex]
+						m.App.StartLogStreaming(selectedService.Name)
+						return m, m.Operations.StreamLogs(selectedService.Name, true)
+					}
 				}
 			}
 		case "enter", "space":
@@ -122,40 +170,60 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}))
 
 	case models.RefreshMsg:
-		// Mock service data for demonstration
-		m.App.UpdateServices([]models.Service{
-			{
-				Name:    "postgres",
-				Image:   "postgres:16",
-				Status:  "running",
-				Ports:   []string{"5432:5432"},
-				Healthy: true,
-				Uptime:  2*time.Hour + 30*time.Minute,
-				CPU:     12.5,
-				Memory:  "256MB",
-			},
-			{
-				Name:    "redis",
-				Image:   "redis:7",
-				Status:  "running",
-				Ports:   []string{"6379:6379"},
-				Healthy: true,
-				Uptime:  1*time.Hour + 45*time.Minute,
-				CPU:     3.2,
-				Memory:  "128MB",
-			},
-			{
-				Name:    "meilisearch",
-				Image:   "getmeili/meilisearch",
-				Status:  "stopped",
-				Ports:   []string{"7700:7700"},
-				Healthy: false,
-				Uptime:  0,
-				CPU:     0.0,
-				Memory:  "0MB",
-			},
-		})
-		m.App.SetStatus("Services refreshed")
+		// Use real Docker service refresh
+		return m, m.Operations.RefreshServices()
+
+	case models.RealServiceStatusMsg:
+		// Convert enhanced services to regular services for display
+		enhancedServices := []models.EnhancedService(msg)
+		regularServices := make([]models.Service, len(enhancedServices))
+		
+		for i, enhanced := range enhancedServices {
+			regularServices[i] = models.Service{
+				Name:    enhanced.Name,
+				Image:   enhanced.Image,
+				Status:  enhanced.Status,
+				Ports:   enhanced.Ports,
+				Healthy: enhanced.Healthy,
+				Uptime:  enhanced.Uptime,
+				CPU:     enhanced.CPU,
+				Memory:  enhanced.Memory,
+			}
+		}
+		
+		m.App.UpdateServices(regularServices)
+		m.App.SetStatus("Services refreshed from Docker")
+
+	case models.OperationCompleteMsg:
+		if msg.Success {
+			m.App.SetStatus(fmt.Sprintf("✅ %s %s completed", strings.Title(msg.Operation), msg.Service))
+			// Refresh services after successful operation
+			return m, m.Operations.RefreshServices()
+		} else {
+			m.App.SetError(fmt.Sprintf("❌ %s %s failed: %s", strings.Title(msg.Operation), msg.Service, msg.Error))
+		}
+
+	case models.LogLineMsg:
+		// Handle real-time log messages - add to service logs
+		m.App.AddLogLine(msg.ServiceName, msg.Line)
+		// Show brief status update
+		m.App.SetStatus(fmt.Sprintf("📝 [%s] %s", msg.ServiceName, msg.Line))
+		// Continue listening for more logs
+		return m, m.listenForLogStreams()
+
+	case models.LogStreamStartMsg:
+		m.App.SetStatus(fmt.Sprintf("🔄 Started log stream for %s", msg.ServiceName))
+		// Continue listening for log messages
+		return m, m.listenForLogStreams()
+
+	case models.LogStreamStopMsg:
+		m.App.SetStatus(fmt.Sprintf("⏹️ Log stream stopped for %s", msg.ServiceName))
+
+	case models.LogStreamErrorMsg:
+		m.App.SetError(fmt.Sprintf("❌ Log stream error for %s: %s", msg.ServiceName, msg.Error))
+
+	case models.ErrorMsg:
+		m.App.SetError(msg.Error)
 	}
 
 	return m, nil
@@ -478,9 +546,9 @@ func (m Model) renderLogs() string {
 	serviceList := strings.Join(serviceRows, "\n")
 	servicesPanel := styles.PanelStyle.Copy().BorderForeground(styles.TronCyan).Render(serviceList)
 
-	// Mock log content for selected service
+	// Real log content for selected service
 	selectedService := m.App.Services[m.App.SelectedServiceIndex]
-	logContent := m.renderMockLogs(selectedService)
+	logContent := m.renderRealLogs(selectedService)
 	logsPanel := styles.PanelStyle.Copy().BorderForeground(styles.TronBlue).Render(logContent)
 
 	// Instructions
@@ -716,6 +784,60 @@ Tron Color Theme:
 		"",
 		footerText,
 	)
+}
+
+// renderRealLogs renders real log content from the stored service logs
+func (m Model) renderRealLogs(service models.Service) string {
+	// Get real logs for the service
+	logs := m.App.GetServiceLogs(service.Name)
+	
+	if len(logs) == 0 {
+		// Show helpful message if no logs yet
+		var message strings.Builder
+		message.WriteString(fmt.Sprintf("=== %s Logs ===\n\n", service.Name))
+		
+		if service.Status == "running" {
+			message.WriteString("🔄 Starting log stream...\n")
+			message.WriteString("📝 Real-time logs will appear here\n\n")
+			message.WriteString(styles.HelpStyle.Render(
+				"💡 Tip: Navigate up/down to select different services and view their logs"))
+		} else {
+			message.WriteString(fmt.Sprintf("⏹️  Service '%s' is not running\n", service.Name))
+			message.WriteString("📝 No logs available for stopped services\n\n")
+			message.WriteString(styles.HelpStyle.Render(
+				fmt.Sprintf("💡 Tip: Start the service with 'nizam up %s' to see logs", service.Name)))
+		}
+		
+		return message.String()
+	}
+	
+	// Build the log display
+	var logDisplay strings.Builder
+	logDisplay.WriteString(fmt.Sprintf("=== %s Real-Time Logs ===\n\n", service.Name))
+	
+	// Show recent logs (limit to fit in panel)
+	maxLines := 20 // Adjust based on panel height
+	startIdx := 0
+	if len(logs) > maxLines {
+		startIdx = len(logs) - maxLines
+	}
+	
+	for i := startIdx; i < len(logs); i++ {
+		logDisplay.WriteString(logs[i])
+		logDisplay.WriteString("\n")
+	}
+	
+	// Add status information
+	logDisplay.WriteString("\n")
+	if m.App.LogFollowing && m.App.CurrentLogService == service.Name {
+		logDisplay.WriteString(styles.HelpStyle.Render("🔄 Following logs... (live stream active)"))
+	} else {
+		logDisplay.WriteString(styles.HelpStyle.Render(
+			fmt.Sprintf("📝 Showing %d log lines | Use 'nizam logs %s' for full output", 
+				len(logs), service.Name)))
+	}
+	
+	return logDisplay.String()
 }
 
 // renderMockLogs renders mock log content for a service

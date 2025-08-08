@@ -20,8 +20,12 @@ This allows you to interact directly with services, such as:
 Examples:
   nizam exec postgres psql -U user -d myapp
   nizam exec redis redis-cli
-  nizam exec postgres bash`,
+  nizam exec postgres bash
+
+Note: Use -- to separate nizam flags from container command flags:
+  nizam exec postgres -- psql -U user -d myapp`,
 	Args: cobra.MinimumNArgs(2),
+	DisableFlagParsing: true, // Disable flag parsing to pass through all args
 	RunE: func(cmd *cobra.Command, args []string) error {
 		serviceName := args[0]
 		command := args[1:]

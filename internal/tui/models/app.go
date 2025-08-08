@@ -119,6 +119,9 @@ type AppModel struct {
 	SelectedTemplateIndex int
 	SelectedConfigKey     int
 	ScrollOffset          int
+	
+	// Log scrolling
+	LogScrollOffset       int
 
 	// Search and filtering
 	SearchQuery    string
@@ -140,11 +143,12 @@ type AppModel struct {
 	InputCallback func(string) tea.Cmd
 
 	// Log management
-	LogLines      []string
-	LogFollowing  bool
-	LogFilter     string
-	MaxLogLines   int
-	LogCtxCancel  context.CancelFunc
+	ServiceLogs     map[string][]string // logs per service
+	LogFollowing    bool
+	LogFilter       string
+	MaxLogLines     int
+	CurrentLogService string // which service logs are being viewed
+	LogCtxCancel    context.CancelFunc
 
 	// Components
 	Spinner spinner.Model
@@ -193,6 +197,7 @@ func NewAppModel() AppModel {
 		SelectedTemplateIndex: 0,
 		SelectedConfigKey:     0,
 		ScrollOffset:          0,
+		LogScrollOffset:       0,
 
 		// Search and filtering
 		SearchQuery:    "",
@@ -213,11 +218,12 @@ func NewAppModel() AppModel {
 		InputCallback: nil,
 
 		// Log management
-		LogLines:      make([]string, 0),
-		LogFollowing:  false,
-		LogFilter:     "",
-		MaxLogLines:   1000,
-		LogCtxCancel:  nil,
+		ServiceLogs:       make(map[string][]string),
+		LogFollowing:      false,
+		LogFilter:         "",
+		MaxLogLines:       1000,
+		CurrentLogService: "",
+		LogCtxCancel:      nil,
 
 		// Components
 		Spinner: s,
@@ -295,6 +301,7 @@ type (
 	LogLineMsg struct {
 		ServiceName string
 		Line        string
+		Timestamp   time.Time
 	}
 
 	LogStreamStartMsg struct {
@@ -302,6 +309,15 @@ type (
 	}
 
 	LogStreamStopMsg struct {
+		ServiceName string
+	}
+
+	LogStreamErrorMsg struct {
+		ServiceName string
+		Error       string
+	}
+
+	LogsClearMsg struct {
 		ServiceName string
 	}
 
@@ -541,37 +557,91 @@ func (m *AppModel) GetFilteredTemplates() []ServiceTemplate {
 	return filtered
 }
 
-// AddLogLine adds a line to the log buffer
+// AddLogLine adds a line to the service-specific log buffer
 func (m *AppModel) AddLogLine(serviceName, line string) {
+	if m.ServiceLogs == nil {
+		m.ServiceLogs = make(map[string][]string)
+	}
+	
+	// Initialize service log buffer if it doesn't exist
+	if _, exists := m.ServiceLogs[serviceName]; !exists {
+		m.ServiceLogs[serviceName] = make([]string, 0)
+	}
+	
 	timestamp := time.Now().Format("15:04:05")
-	logLine := fmt.Sprintf("[%s] %s: %s", timestamp, serviceName, line)
+	logLine := fmt.Sprintf("[%s] %s", timestamp, line)
 	
-	m.LogLines = append(m.LogLines, logLine)
+	m.ServiceLogs[serviceName] = append(m.ServiceLogs[serviceName], logLine)
 	
-	// Limit log buffer size
-	if len(m.LogLines) > m.MaxLogLines {
-		m.LogLines = m.LogLines[1:]
+	// Limit log buffer size per service
+	if len(m.ServiceLogs[serviceName]) > m.MaxLogLines {
+		m.ServiceLogs[serviceName] = m.ServiceLogs[serviceName][1:]
 	}
 }
 
-// ClearLogs clears the log buffer
-func (m *AppModel) ClearLogs() {
-	m.LogLines = make([]string, 0)
+// GetServiceLogs returns logs for a specific service
+func (m *AppModel) GetServiceLogs(serviceName string) []string {
+	if m.ServiceLogs == nil {
+		return []string{}
+	}
+	
+	logs, exists := m.ServiceLogs[serviceName]
+	if !exists {
+		return []string{}
+	}
+	
+	return logs
 }
 
-// GetFilteredLogs returns logs filtered by the current filter
-func (m *AppModel) GetFilteredLogs() []string {
+// GetFilteredServiceLogs returns filtered logs for a specific service
+func (m *AppModel) GetFilteredServiceLogs(serviceName string) []string {
+	logs := m.GetServiceLogs(serviceName)
+	
 	if m.LogFilter == "" {
-		return m.LogLines
+		return logs
 	}
 	
 	filtered := make([]string, 0)
-	for _, line := range m.LogLines {
+	for _, line := range logs {
 		if contains(line, m.LogFilter) {
 			filtered = append(filtered, line)
 		}
 	}
 	return filtered
+}
+
+// ClearServiceLogs clears the log buffer for a specific service
+func (m *AppModel) ClearServiceLogs(serviceName string) {
+	if m.ServiceLogs != nil {
+		m.ServiceLogs[serviceName] = make([]string, 0)
+	}
+}
+
+// ClearAllLogs clears all log buffers
+func (m *AppModel) ClearAllLogs() {
+	m.ServiceLogs = make(map[string][]string)
+}
+
+// StartLogStreaming starts log streaming for a service
+func (m *AppModel) StartLogStreaming(serviceName string) {
+	m.CurrentLogService = serviceName
+	m.LogFollowing = true
+	// Initialize log buffer for service if not exists
+	if m.ServiceLogs == nil {
+		m.ServiceLogs = make(map[string][]string)
+	}
+	if _, exists := m.ServiceLogs[serviceName]; !exists {
+		m.ServiceLogs[serviceName] = make([]string, 0)
+	}
+}
+
+// StopLogStreaming stops log streaming
+func (m *AppModel) StopLogStreaming() {
+	m.LogFollowing = false
+	if m.LogCtxCancel != nil {
+		m.LogCtxCancel()
+		m.LogCtxCancel = nil
+	}
 }
 
 // ShowConfirmDialog shows a confirmation dialog

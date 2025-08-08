@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -15,13 +16,23 @@ import (
 
 // EnhancedModel wraps the TUI with full operational capabilities
 type EnhancedModel struct {
-	App        models.AppModel
-	Operations *ServiceOperations
-	ConfigPath string
+	App                 models.AppModel
+	Operations          *ServiceOperations
+	ConfigPath          string
+	Viewport            viewport.Model
+	Ready               bool
+	lastViewportContent string
+	contentLines        []string // Store content lines ourselves
+	contentSet          bool     // Track if content has been set
+	cachedConfigView    string   // Cache config view content
+	lastConfigUpdate    time.Time // Track when config was last updated
 }
 
 // NewEnhancedModel creates a new enhanced TUI model
 func NewEnhancedModel() (*EnhancedModel, error) {
+	// Initialize log streaming channels
+	InitLogChannels()
+	
 	// Initialize operations
 	ops, err := NewServiceOperations()
 	if err != nil {
@@ -48,6 +59,7 @@ func NewEnhancedModel() (*EnhancedModel, error) {
 		App:        app,
 		Operations: ops,
 		ConfigPath: GetConfigPath(),
+		Ready:      false, // Will be set to true once we receive initial WindowSizeMsg
 	}, nil
 }
 
@@ -56,19 +68,55 @@ func (m EnhancedModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.App.Init(),
 		m.Operations.RefreshServices(), // Load real service data immediately
+		m.subscribeToLogChannels(), // Start listening for log stream messages
 	)
 }
 
 // Update handles all message types for the enhanced TUI
-func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.App.Width = msg.Width
 		m.App.Height = msg.Height
+		
+		// Store current viewport content before resize
+		var currentContent string
+		var currentYOffset int
+		if m.Ready {
+			currentContent = m.lastViewportContent
+			currentYOffset = m.Viewport.YOffset
+		}
+		
+		// Initialize or update viewport
+		if !m.Ready {
+			m.Viewport = viewport.New(msg.Width, msg.Height-2) // Reserve space for footer
+			m.Viewport.HighPerformanceRendering = false
+			m.Ready = true
+		} else {
+			m.Viewport.Width = msg.Width
+			m.Viewport.Height = msg.Height - 2
+			
+			// Restore content after viewport resize
+			if currentContent != "" && len(m.contentLines) > 0 {
+				m.Viewport.SetContent(currentContent)
+				m.contentSet = true
+				// Preserve scroll position within bounds using our own line count
+				totalLines := len(m.contentLines)
+				maxOffset := totalLines - m.Viewport.Height
+				if maxOffset < 0 {
+					maxOffset = 0
+				}
+				if currentYOffset > maxOffset {
+					currentYOffset = maxOffset
+				}
+				m.Viewport.YOffset = currentYOffset
+			}
+		}
 
 	case tea.KeyMsg:
+		
 		// Handle input modes first
 		if m.App.InputMode != models.InputModeNone {
 			switch msg.String() {
@@ -122,7 +170,8 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.App.NavigateToView(models.HelpView)
 			}
 		case "r":
-			// Refresh services
+			// Refresh services and clear config cache
+			m.cachedConfigView = "" // Force config view refresh
 			m.App.SetStatus("Refreshing services...")
 			cmds = append(cmds, m.Operations.RefreshServices())
 		case "/":
@@ -151,9 +200,43 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.App.NavigateToView(models.TemplatesView)
 		case "5":
 			m.App.NavigateToView(models.ConfigView)
+		// Viewport scrolling controls
+		case "ctrl+u":
+			m.Viewport.YOffset -= 5
+			if m.Viewport.YOffset < 0 {
+				m.Viewport.YOffset = 0
+			}
+			return m, nil
+		case "ctrl+d":
+			totalLines := len(m.contentLines)
+			maxOffset := totalLines - m.Viewport.Height
+			if maxOffset < 0 {
+				maxOffset = 0
+			}
+			m.Viewport.YOffset += 5
+			if m.Viewport.YOffset > maxOffset {
+				m.Viewport.YOffset = maxOffset
+			}
+			return m, nil
+		case "ctrl+b":
+			m.Viewport.YOffset -= m.Viewport.Height
+			if m.Viewport.YOffset < 0 {
+				m.Viewport.YOffset = 0
+			}
+			return m, nil
+		case "ctrl+f":
+			totalLines := len(m.contentLines)
+			maxOffset := totalLines - m.Viewport.Height
+			if maxOffset < 0 {
+				maxOffset = 0
+			}
+			m.Viewport.YOffset += m.Viewport.Height
+			if m.Viewport.YOffset > maxOffset {
+				m.Viewport.YOffset = maxOffset
+			}
+			return m, nil
 		}
-
-		// View-specific key handlers
+		
 		switch m.App.CurrentView {
 		case models.DashboardView:
 			switch msg.String() {
@@ -232,28 +315,91 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case models.LogsView:
 			filteredServices := m.App.GetFilteredServices()
 			switch msg.String() {
-			case "up", "k":
+			case "left", "h":
+				// Navigate services
 				if m.App.SelectedServiceIndex > 0 {
 					m.App.SelectedServiceIndex--
+					// Reset scroll when switching services
+					m.App.LogScrollOffset = 0
 				}
-			case "down", "j":
+			case "right", "l":
+				// Navigate services
 				if m.App.SelectedServiceIndex < len(filteredServices)-1 {
 					m.App.SelectedServiceIndex++
+					// Reset scroll when switching services
+					m.App.LogScrollOffset = 0
+				}
+			case "up", "k":
+				// Scroll up in logs
+				if m.App.LogScrollOffset > 0 {
+					m.App.LogScrollOffset--
+				}
+			case "down", "j":
+				// Scroll down in logs
+				if len(filteredServices) > 0 && m.App.SelectedServiceIndex < len(filteredServices) {
+					selectedService := filteredServices[m.App.SelectedServiceIndex]
+					serviceLogs := m.App.GetFilteredServiceLogs(selectedService.Name)
+					
+					// We need to calculate the total log lines including wrapped lines and headers
+					// Get the same calculation as in renderRealLogs
+					servicesPanelWidth := 30
+					logsPanelWidth := m.App.Width - servicesPanelWidth - 6
+					if servicesPanelWidth > m.App.Width/3 {
+						servicesPanelWidth = m.App.Width / 3
+					}
+					if logsPanelWidth < 50 {
+						logsPanelWidth = 50
+					}
+					
+					// Build the same log structure as renderRealLogs
+					var allLogLines []string
+					if len(serviceLogs) > 0 {
+						timestamp := time.Now().Format("15:04:05")
+						header := fmt.Sprintf("[%s] === %s Live Logs (Total: %d) ===", timestamp, selectedService.Name, len(serviceLogs))
+						allLogLines = append(allLogLines, header, "")
+						
+						// Add wrapped log lines
+						for _, logLine := range serviceLogs {
+							wrappedLines := m.wrapLogLine(logLine, logsPanelWidth-4)
+							allLogLines = append(allLogLines, wrappedLines...)
+						}
+						
+						// Add status footer
+						allLogLines = append(allLogLines, "", 
+							fmt.Sprintf("[%s] 📊 Current Status: %s | Uptime: %s | Health: %s", 
+								timestamp, selectedService.Status, formatDuration(selectedService.Uptime), 
+								func() string { if selectedService.Healthy { return "✅ Healthy" }; return "❌ Unhealthy" }()))
+					}
+					
+					visibleHeight := m.App.Height - 15
+					if visibleHeight < 5 {
+						visibleHeight = 5
+					}
+					
+					// Check if we can scroll down
+					if len(allLogLines) > visibleHeight && m.App.LogScrollOffset < len(allLogLines)-visibleHeight {
+						m.App.LogScrollOffset++
+					}
 				}
 			case "enter":
 				// Start/stop following logs for selected service
 				if len(filteredServices) > 0 && m.App.SelectedServiceIndex < len(filteredServices) {
 					serviceName := filteredServices[m.App.SelectedServiceIndex].Name
+					m.App.SetStatus(fmt.Sprintf("Starting log stream for %s...", serviceName))
 					cmds = append(cmds, m.Operations.StreamLogs(serviceName, true))
 				}
 			case "c":
 				// Clear logs
-				m.App.ClearLogs()
+				m.App.ClearAllLogs()
+				// Reset scroll position
+				m.App.LogScrollOffset = 0
 			case "f":
 				// Filter logs
 				m.App.SetInputMode(models.InputModeSearch, "Filter logs: ", func(filter string) tea.Cmd {
 					m.App.LogFilter = filter
 					m.App.ClearInputMode()
+					// Reset scroll when filter changes
+					m.App.LogScrollOffset = 0
 					return nil
 				})
 			}
@@ -326,6 +472,44 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case models.ErrorMsg:
 		m.App.SetError(msg.Error)
 
+	// Handle log streaming messages
+	case models.LogLineMsg:
+		// Add log line to service logs
+		m.App.AddLogLine(msg.ServiceName, msg.Line)
+
+	// Handle batched log messages
+	case LogBatchMsg:
+		// Process each log message in the batch
+		for _, logMsg := range msg.Messages {
+			m.App.AddLogLine(logMsg.ServiceName, logMsg.Line)
+		}
+		// Continue listening for more logs immediately
+		cmds = append(cmds, m.waitForLogLine())
+	
+	case models.LogStreamStartMsg:
+		m.App.SetStatus(fmt.Sprintf("Started log streaming for %s", msg.ServiceName))
+		m.App.StartLogStreaming(msg.ServiceName)
+	
+	case models.LogStreamStopMsg:
+		m.App.SetStatus(fmt.Sprintf("Log streaming stopped for %s", msg.ServiceName))
+		m.App.StopLogStreaming()
+	
+	case models.LogStreamErrorMsg:
+		m.App.SetError(fmt.Sprintf("Log error for %s: %s", msg.ServiceName, msg.Error))
+
+	// Handle continue listening messages - restart channel listeners
+	case ContinueLogListeningMsg:
+		cmds = append(cmds, m.waitForLogLine())
+	
+	case ContinueLogStartListeningMsg:
+		cmds = append(cmds, m.waitForLogStreamStart())
+	
+	case ContinueLogStopListeningMsg:
+		cmds = append(cmds, m.waitForLogStreamStop())
+	
+	case ContinueLogErrorListeningMsg:
+		cmds = append(cmds, m.waitForLogStreamError())
+
 	case models.TickMsg:
 		var cmd tea.Cmd
 		m.App.Spinner, cmd = m.App.Spinner.Update(msg)
@@ -346,13 +530,30 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.App.TextInput, cmd = m.App.TextInput.Update(msg)
 			cmds = append(cmds, cmd)
 		}
+		
+		// Only pass specific message types to viewport to avoid content resets
+		// Viewport should only handle mouse events and specific navigation messages
+		if m.Ready {
+			switch msg.(type) {
+			case tea.MouseMsg:
+				// Allow viewport to handle mouse events (scrolling, clicking)
+				var cmd tea.Cmd
+				m.Viewport, cmd = m.Viewport.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+			default:
+				// Don't pass other message types to viewport to prevent content resets
+				// Viewport content is managed explicitly in the View() function
+			}
+		}
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
 // handleInputMode handles input mode interactions
-func (m EnhancedModel) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *EnhancedModel) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		if m.App.InputCallback != nil {
@@ -372,7 +573,7 @@ func (m EnhancedModel) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleConfirmation handles confirmation dialog interactions
-func (m EnhancedModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *EnhancedModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y", "enter":
 		if m.App.ConfirmCallback != nil {
@@ -499,7 +700,7 @@ func (m EnhancedModel) handleLogsKeys(msg tea.KeyMsg) []tea.Cmd {
 		}
 	case "c":
 		// Clear logs
-		m.App.ClearLogs()
+		m.App.ClearAllLogs()
 	case "f":
 		// Filter logs
 		m.App.SetInputMode(models.InputModeSearch, "Filter logs: ", func(filter string) tea.Cmd {
@@ -627,8 +828,8 @@ func (m EnhancedModel) stopAllServices() tea.Cmd {
 }
 
 // View renders the enhanced TUI
-func (m EnhancedModel) View() string {
-	if m.App.Width == 0 || m.App.Height == 0 {
+func (m *EnhancedModel) View() string {
+	if !m.Ready || m.App.Width == 0 || m.App.Height == 0 {
 		return "Initializing enhanced TUI..."
 	}
 
@@ -642,7 +843,10 @@ func (m EnhancedModel) View() string {
 		return m.renderInputMode()
 	}
 
-	// Render main view
+	// Create the full content that will be scrollable
+	header := m.renderEnhancedHeader()
+	
+	// Render main view content (no height constraints - let it be natural)
 	var content string
 	switch m.App.CurrentView {
 	case models.DashboardView:
@@ -658,18 +862,28 @@ func (m EnhancedModel) View() string {
 	case models.HelpView:
 		content = m.renderEnhancedHelp()
 	}
-
-	// Create main layout
-	header := m.renderEnhancedHeader()
+	
+	// Combine header and content for the viewport
+	fullContent := lipgloss.JoinVertical(lipgloss.Left, header, "", content)
+	
+	
+	// Manage viewport content robustly
+	newContentLines := strings.Split(fullContent, "\n")
+	contentChanged := fullContent != m.lastViewportContent
+	
+	// Only update if content actually changed or we haven't set content yet
+	if !m.contentSet || contentChanged {
+		m.Viewport.SetContent(fullContent)
+		m.lastViewportContent = fullContent
+		m.contentLines = newContentLines
+		m.contentSet = true
+	}
+	
+	// Render footer separately (always visible at bottom)
 	footer := m.renderEnhancedFooter()
 	
-	// Calculate content height
-	contentHeight := m.App.Height - lipgloss.Height(header) - lipgloss.Height(footer) - 2
-	
-	// Apply main app styling
-	content = styles.AppStyle.Width(m.App.Width).Height(contentHeight).Render(content)
-	
-	return lipgloss.JoinVertical(lipgloss.Left, header, content, footer)
+	// Return viewport view with footer
+	return lipgloss.JoinVertical(lipgloss.Left, m.Viewport.View(), footer)
 }
 
 // renderConfirmationDialog renders a confirmation dialog
@@ -833,7 +1047,7 @@ func (m EnhancedModel) renderEnhancedQuickActions() string {
 	
 	// Interactive instructions
 	instructions := styles.HelpStyle.Render(
-		"Navigation: Tab/Shift+Tab to select | Enter/Space to execute | Real Docker operations enabled")
+		"Navigation: Tab/Shift+Tab to select | Enter/Space to execute | Ctrl+U/D half-page | Ctrl+B/F full-page | Real Docker operations enabled")
 	
 	return lipgloss.JoinVertical(lipgloss.Left,
 		styles.HeaderStyle.Render("⚡ Quick Actions (Live Operations)"),
@@ -938,7 +1152,7 @@ func (m EnhancedModel) renderEnhancedServicesList(compact bool) string {
 func (m EnhancedModel) renderEnhancedServices() string {
 	// Service management instructions
 	instructions := styles.HelpStyle.Render(
-		"Controls: ↑/↓ Navigate | s=Start | x=Stop | R=Restart | d=Remove | Enter=View Logs")
+		"Controls: ↑/↓ Navigate | s=Start | x=Stop | R=Restart | d=Remove | Enter=View Logs | Ctrl+U/D half-page | Ctrl+B/F full-page")
 	
 	return lipgloss.JoinVertical(lipgloss.Left,
 		styles.HeaderStyle.Render("🐳 Enhanced Service Management"),
@@ -960,9 +1174,9 @@ func (m EnhancedModel) renderEnhancedLogs() string {
 		)
 	}
 
-	// Service selection list
+	// Service selection list - make it more compact
 	var serviceRows []string
-	serviceRows = append(serviceRows, styles.TableHeaderStyle.Render("Select service for log viewing:"))
+	serviceRows = append(serviceRows, styles.TableHeaderStyle.Render("Services:"))
 
 	for i, service := range filteredServices {
 		statusIcon := "🟢"
@@ -970,15 +1184,15 @@ func (m EnhancedModel) renderEnhancedLogs() string {
 			statusIcon = "🔴"
 		}
 		
-		// Highlight selected service
+		// Highlight selected service with compact formatting
 		if i == m.App.SelectedServiceIndex {
 			cursor := "▶ "
-			row := fmt.Sprintf("%s %s%-15s %-15s %-20s",
-				cursor, statusIcon, service.Name, service.Status, service.Image)
+			// Compact format: just name and status
+			row := fmt.Sprintf("%s%s %s", cursor, statusIcon, service.Name)
 			serviceRows = append(serviceRows, styles.TableRowSelectedStyle.Render(row))
 		} else {
-			row := fmt.Sprintf("  %s %-15s %-15s %-20s",
-				statusIcon, service.Name, service.Status, service.Image)
+			// Compact format without cursor padding
+			row := fmt.Sprintf("  %s %s", statusIcon, service.Name)
 			serviceRows = append(serviceRows, styles.TableRowStyle.Render(row))
 		}
 	}
@@ -991,11 +1205,27 @@ func (m EnhancedModel) renderEnhancedLogs() string {
 	logContent := m.renderRealLogs(selectedService)
 	logsPanel := styles.PanelStyle.Copy().BorderForeground(styles.TronBlue).Render(logContent)
 
-	// Instructions
+	// Instructions with scrolling controls
 	instructions := styles.HelpStyle.Render(
-		"Navigation: ↑/↓ or j/k to select | Enter to stream logs | c=Clear | f=Filter | Real-time logs")
+		"Navigation: ←/→ h/l select service | ↑/↓ j/k scroll logs | Ctrl+U/D half-page | Ctrl+B/F full-page | Enter=Stream | c=Clear | f=Filter")
 
-	// Arrange side by side
+	// Calculate layout dimensions to prevent overlap
+	servicesPanelWidth := 30 // Reduced width for services panel
+	logsPanelWidth := m.App.Width - servicesPanelWidth - 6 // Remaining width minus spacing and borders
+	
+	// Ensure reasonable widths
+	if servicesPanelWidth > m.App.Width/3 {
+		servicesPanelWidth = m.App.Width / 3
+	}
+	if logsPanelWidth < 50 {
+		logsPanelWidth = 50
+	}
+	
+	// Apply fixed widths to panels
+	servicesPanel = styles.PanelStyle.Copy().BorderForeground(styles.TronCyan).Width(servicesPanelWidth).Render(serviceList)
+	logsPanel = styles.PanelStyle.Copy().BorderForeground(styles.TronBlue).Width(logsPanelWidth).Render(logContent)
+	
+	// Arrange side by side with proper spacing
 	content := lipgloss.JoinHorizontal(lipgloss.Top, servicesPanel, "  ", logsPanel)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
@@ -1008,47 +1238,125 @@ func (m EnhancedModel) renderEnhancedLogs() string {
 }
 
 func (m EnhancedModel) renderRealLogs(service models.Service) string {
-	// Generate realistic logs based on service status
-	var logs []string
-	timestamp := time.Now().Format("15:04:05")
+	// Calculate logs panel width for wrapping
+	servicesPanelWidth := 30 // Reduced width for services panel
+	logsPanelWidth := m.App.Width - servicesPanelWidth - 6 // Remaining width minus spacing and borders
 	
-	logs = append(logs, fmt.Sprintf("[%s] === %s Live Logs ===", timestamp, service.Name))
+	// Ensure reasonable widths
+	if servicesPanelWidth > m.App.Width/3 {
+		servicesPanelWidth = m.App.Width / 3
+	}
+	if logsPanelWidth < 50 {
+		logsPanelWidth = 50
+	}
 	
-	if service.Status == "running" {
-		logs = append(logs, 
-			fmt.Sprintf("[%s] ✅ Container %s is healthy", timestamp, service.Name),
-			fmt.Sprintf("[%s] 🌐 Listening on: %s", timestamp, strings.Join(service.Ports, ", ")),
-			fmt.Sprintf("[%s] 📊 CPU: %.1f%%, Memory: %s", timestamp, service.CPU, service.Memory),
-		)
+	// Get actual stored logs from the AppModel
+	serviceLogs := m.App.GetFilteredServiceLogs(service.Name)
+	
+	if len(serviceLogs) == 0 {
+		// Show helpful message when no logs are available
+		timestamp := time.Now().Format("15:04:05")
+		emptyMsg := []string{
+			fmt.Sprintf("[%s] === %s Logs ===", timestamp, service.Name),
+			"",
+		}
 		
-		// Service-specific logs
-		switch service.Name {
-		case "postgres":
-			logs = append(logs,
-				fmt.Sprintf("[%s] PostgreSQL ready for connections", timestamp),
-				fmt.Sprintf("[%s] autovacuum launcher started", timestamp),
+		if service.Status == "running" {
+			emptyMsg = append(emptyMsg, 
+				fmt.Sprintf("[%s] ℹ️  No logs captured yet for %s", timestamp, service.Name),
+				fmt.Sprintf("[%s] 🔄 Press Enter to start streaming logs", timestamp),
+				fmt.Sprintf("[%s] 📊 Service Status: %s, Ports: %s", timestamp, service.Status, strings.Join(service.Ports, ", ")),
 			)
-		case "redis":
-			logs = append(logs,
-				fmt.Sprintf("[%s] Redis server ready for connections", timestamp),
-				fmt.Sprintf("[%s] Background saving completed", timestamp),
-			)
-		case "meilisearch":
-			logs = append(logs,
-				fmt.Sprintf("[%s] Meilisearch server listening on 7700", timestamp),
-				fmt.Sprintf("[%s] Index updates processed", timestamp),
+		} else {
+			emptyMsg = append(emptyMsg,
+				fmt.Sprintf("[%s] ❌ Service %s is %s", timestamp, service.Name, service.Status),
+				fmt.Sprintf("[%s] 💡 Start the service first to view logs", timestamp),
 			)
 		}
 		
-		logs = append(logs, fmt.Sprintf("[%s] ⏱️  Uptime: %s", timestamp, formatDuration(service.Uptime)))
-	} else {
-		logs = append(logs,
-			fmt.Sprintf("[%s] ❌ Container %s is stopped", timestamp, service.Name),
-			fmt.Sprintf("[%s] Use 's' key to start service", timestamp),
-		)
+		return strings.Join(emptyMsg, "\n")
 	}
 	
-	return strings.Join(logs, "\n")
+	// Display actual logs with a header
+	timestamp := time.Now().Format("15:04:05")
+	header := fmt.Sprintf("[%s] === %s Live Logs (Total: %d) ===", timestamp, service.Name, len(serviceLogs))
+	
+	// Show filter info if active
+	filterInfo := ""
+	if m.App.LogFilter != "" {
+		filterInfo = fmt.Sprintf("[%s] 🔍 Filtered by: '%s'", timestamp, m.App.LogFilter)
+	}
+	
+	// Combine header, filter info, and actual logs
+	allLogs := []string{header}
+	if filterInfo != "" {
+		allLogs = append(allLogs, filterInfo, "")
+	} else {
+		allLogs = append(allLogs, "")
+	}
+	
+	// Add the actual service logs with proper wrapping for long lines
+	for _, logLine := range serviceLogs {
+		// Wrap long log lines to fit in the panel
+		wrappedLines := m.wrapLogLine(logLine, logsPanelWidth-4) // Account for panel borders
+		allLogs = append(allLogs, wrappedLines...)
+	}
+	
+	// Show current service status at the end if logs exist
+	if len(serviceLogs) > 0 {
+		allLogs = append(allLogs, "", 
+			fmt.Sprintf("[%s] 📊 Current Status: %s | Uptime: %s | Health: %s", 
+				timestamp, service.Status, formatDuration(service.Uptime), 
+				func() string { if service.Healthy { return "✅ Healthy" }; return "❌ Unhealthy" }()))
+	}
+	
+	// Apply scrolling to display only the visible portion
+	visibleHeight := m.App.Height - 15 // Account for header, footer, instructions
+	if visibleHeight < 5 {
+		visibleHeight = 5 // Minimum visible height
+	}
+	
+	// Calculate the visible slice of logs based on scroll offset
+	scrollOffset := m.App.LogScrollOffset
+	if scrollOffset < 0 {
+		scrollOffset = 0
+	}
+	
+	// Make sure we don't scroll past the end
+	if len(allLogs) > visibleHeight && scrollOffset > len(allLogs)-visibleHeight {
+		scrollOffset = len(allLogs) - visibleHeight
+		m.App.LogScrollOffset = scrollOffset // Update the model
+	}
+	
+	// Extract the visible portion of logs
+	var visibleLogs []string
+	if len(allLogs) <= visibleHeight {
+		// All logs fit on screen, no scrolling needed
+		visibleLogs = allLogs
+	} else {
+		// Show only the visible portion
+		start := scrollOffset
+		end := scrollOffset + visibleHeight
+		if end > len(allLogs) {
+			end = len(allLogs)
+		}
+		visibleLogs = allLogs[start:end]
+		
+		// Add scroll indicators if needed
+		if scrollOffset > 0 {
+			// Add indicator at the top that there are more logs above
+			visibleLogs[0] = fmt.Sprintf("⬆️  (%d more lines above) %s", scrollOffset, visibleLogs[0])
+		}
+		if end < len(allLogs) {
+			// Add indicator at the bottom that there are more logs below
+			remaining := len(allLogs) - end
+			if len(visibleLogs) > 0 {
+				visibleLogs = append(visibleLogs, fmt.Sprintf("⬇️  (%d more lines below) Use ↓/j to scroll down", remaining))
+			}
+		}
+	}
+	
+	return strings.Join(visibleLogs, "\n")
 }
 
 func (m EnhancedModel) renderEnhancedTemplates() string {
@@ -1109,7 +1417,7 @@ func (m EnhancedModel) renderEnhancedTemplates() string {
 	
 	// Instructions
 	instructions := styles.HelpStyle.Render(
-		"Navigation: ↑/↓ Navigate | Enter/a=Add Service | Real service creation enabled")
+		"Navigation: ↑/↓ Navigate | Enter/a=Add Service | Ctrl+U/D half-page | Ctrl+B/F full-page | Real service creation enabled")
 	
 	// Search info
 	searchInfo := ""
@@ -1129,18 +1437,23 @@ func (m EnhancedModel) renderEnhancedTemplates() string {
 	)
 }
 
-func (m EnhancedModel) renderEnhancedConfig() string {
-	// Configuration sections with real data
+func (m *EnhancedModel) renderEnhancedConfig() string {
+	// Cache config view content and only update every 5 seconds or on explicit refresh
+	now := time.Now()
+	if m.cachedConfigView != "" && now.Sub(m.lastConfigUpdate) < 5*time.Second {
+		return m.cachedConfigView
+	}
+	
+	// Configuration sections with stable data
 	generalConfig := fmt.Sprintf(`
 General Settings:
 • Profile: %s (active)
 • Config File: %s
 • Total Services: %d
-• Running Services: %d`,
+• Docker Client: Connected`,
 		m.App.Config.Profile,
 		m.ConfigPath,
-		len(m.App.Config.Services),
-		m.App.GetRunningServices())
+		len(m.App.Config.Services))
 	
 	dockerConfig := `
 Docker Settings:
@@ -1155,9 +1468,9 @@ Enhanced TUI Settings:
 • Theme: Tron (Cyberpunk)
 • Real-time Updates: ✅ Enabled
 • Service Operations: ✅ Live
-• Refresh Rate: Auto (30s)`
+• Auto-refresh: Every 30s`
 	
-	// Current services in config
+	// Current services in config (stable list)
 	var servicesList []string
 	for name, service := range m.App.Config.Services {
 		servicesList = append(servicesList, fmt.Sprintf("• %s: %s", name, service.Image))
@@ -1180,28 +1493,41 @@ Enhanced TUI Settings:
 		"Configuration Management:\n" +
 		"• Edit .nizam.yaml directly to modify settings\n" +
 		"• Use Templates (4) to add new services\n" +
-		"• Press 'r' to reload configuration")
+		"• Press 'r' to reload configuration\n" +
+		"• Ctrl+U/D half-page | Ctrl+B/F full-page scrolling")
 	
-	return lipgloss.JoinVertical(lipgloss.Left,
+	content := lipgloss.JoinVertical(lipgloss.Left,
 		styles.HeaderStyle.Render("⚙️ Enhanced Configuration"),
 		"",
 		columns,
 		"",
 		instructions,
 	)
+	
+	// Cache the content and update timestamp
+	m.cachedConfigView = content
+	m.lastConfigUpdate = now
+	
+	return content
 }
 
 func (m EnhancedModel) renderEnhancedHelp() string {
 	// Enhanced help with real operations
 	navigation := `
 Keyboard Navigation:
-• 1-5         - Switch between views
+• 1-5           - Switch between views
 • Tab/Shift+Tab - Navigate panels
-• h/?         - Toggle this help
-• r           - Refresh services (live)
-• q/Ctrl+C    - Quit application
-• /           - Search services/templates
-• Esc         - Clear search/go back`
+• h/?           - Toggle this help
+• r             - Refresh services (live)
+• q/Ctrl+C      - Quit application
+• /             - Search services/templates
+• Esc           - Clear search/go back
+
+Viewport Scrolling:
+• Ctrl+U        - Scroll up (5 lines)
+• Ctrl+D        - Scroll down (5 lines)  
+• Ctrl+B        - Page up (full screen)
+• Ctrl+F        - Page down (full screen)`
 	
 	operations := `
 Live Service Operations:
@@ -1272,7 +1598,7 @@ func (m EnhancedModel) renderEnhancedFooter() string {
 		middleSection = "Ready for operations"
 	}
 	
-	rightSection := "Press '?' for help | 'q' to quit"
+	rightSection := "'?' Help | 'q' Quit"
 	
 	// Create footer sections
 	left := styles.HelpStyle.Render(leftSection)
@@ -1297,6 +1623,157 @@ func (m EnhancedModel) renderEnhancedFooter() string {
 	return styles.SeparatorStyle.Render(strings.Repeat("─", m.App.Width)) + "\n" + footer
 }
 
+// subscribeToLogChannels starts listening to log streaming channels
+func (m EnhancedModel) subscribeToLogChannels() tea.Cmd {
+	return tea.Batch(
+		m.waitForLogLine(),
+		m.waitForLogStreamStart(),
+		m.waitForLogStreamStop(),
+		m.waitForLogStreamError(),
+	)
+}
+
+// waitForLogLine waits for log line messages and collects them in batches
+func (m EnhancedModel) waitForLogLine() tea.Cmd {
+	return func() tea.Msg {
+		// Try to collect multiple messages at once
+		logChan := GetLogStreamChan()
+		
+		// First, try to get at least one message
+		select {
+		case firstMsg := <-logChan:
+			// Got first message, now try to collect more quickly
+			collectedMsgs := []models.LogLineMsg{firstMsg}
+			
+			// Try to collect additional messages for up to 5ms
+			timeout := time.After(5 * time.Millisecond)
+			for len(collectedMsgs) < 50 { // Limit batch size
+				select {
+				case additionalMsg := <-logChan:
+					collectedMsgs = append(collectedMsgs, additionalMsg)
+				case <-timeout:
+					// Timeout reached, return what we have
+					goto returnBatch
+				}
+			}
+			
+			returnBatch:
+			// Return the batch - the Update function will handle continuing to listen
+			return LogBatchMsg{Messages: collectedMsgs}
+			
+		case <-time.After(10 * time.Millisecond):
+			// No messages available, continue listening
+			return ContinueLogListeningMsg{}
+		}
+	}
+}
+
+// waitForLogStreamStart waits for a log stream start message (placeholder)
+func (m EnhancedModel) waitForLogStreamStart() tea.Cmd {
+	return func() tea.Msg {
+		// For now, just return continue message since we don't have separate start channel
+		time.Sleep(50 * time.Millisecond)
+		return ContinueLogStartListeningMsg{}
+	}
+}
+
+// waitForLogStreamStop waits for a log stream stop message (placeholder)
+func (m EnhancedModel) waitForLogStreamStop() tea.Cmd {
+	return func() tea.Msg {
+		// For now, just return continue message since we don't have separate stop channel
+		time.Sleep(50 * time.Millisecond)
+		return ContinueLogStopListeningMsg{}
+	}
+}
+
+// waitForLogStreamError waits for a log stream error message
+func (m EnhancedModel) waitForLogStreamError() tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case errMsg := <-GetLogStreamErrChan():
+			// Type assert to the expected message types
+			switch msg := errMsg.(type) {
+			case models.LogStreamErrorMsg:
+				return msg
+			case models.LogStreamStopMsg:
+				return msg
+			default:
+				// Handle unexpected message type
+				return models.LogStreamErrorMsg{
+					ServiceName: "unknown",
+					Error:       "Unknown error message type",
+				}
+			}
+		case <-time.After(50 * time.Millisecond):
+			return ContinueLogErrorListeningMsg{}
+		}
+	}
+}
+
+// Message types for continuing to listen to channels
+type ContinueLogListeningMsg struct{}
+type ContinueLogStartListeningMsg struct{}
+type ContinueLogStopListeningMsg struct{}
+type ContinueLogErrorListeningMsg struct{}
+
+// LogBatchMsg represents a batch of log messages
+type LogBatchMsg struct {
+	Messages []models.LogLineMsg
+}
+
+// wrapLogLine wraps a single log line to fit within the specified width
+// It breaks long lines at word boundaries when possible, or at character boundaries if necessary
+func (m EnhancedModel) wrapLogLine(line string, width int) []string {
+	if len(line) <= width {
+		return []string{line}
+	}
+	
+	var wrappedLines []string
+	currentLine := line
+	
+	for len(currentLine) > width {
+		// Try to break at a word boundary within the width limit
+		breakPoint := width
+		
+		// Look for the last space or other word boundary character within the limit
+		for i := width - 1; i >= width/2; i-- {
+			if currentLine[i] == ' ' || currentLine[i] == '\t' || currentLine[i] == ',' || 
+			   currentLine[i] == ';' || currentLine[i] == '|' || currentLine[i] == '=' {
+				breakPoint = i
+				break
+			}
+		}
+		
+		// If we couldn't find a good break point, just break at the width limit
+		if breakPoint == width {
+			// Look for any reasonable breaking character in the first half
+			for i := width/2; i < width; i++ {
+				if currentLine[i] == ' ' || currentLine[i] == '\t' {
+					breakPoint = i
+					break
+				}
+			}
+		}
+		
+		// Extract the line segment
+		segment := strings.TrimRight(currentLine[:breakPoint], " \t")
+		wrappedLines = append(wrappedLines, segment)
+		
+		// Continue with the remainder, skipping any leading whitespace
+		if breakPoint < len(currentLine) {
+			currentLine = strings.TrimLeft(currentLine[breakPoint:], " \t")
+		} else {
+			break
+		}
+	}
+	
+	// Add any remaining text
+	if len(currentLine) > 0 {
+		wrappedLines = append(wrappedLines, currentLine)
+	}
+	
+	return wrappedLines
+}
 
 // RunEnhancedTUI starts the enhanced TUI application with real Docker operations
 func RunEnhancedTUI(demo bool, debug bool) error {

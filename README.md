@@ -80,6 +80,8 @@ nizam tui --debug
 - Add new services from templates with interactive prompts
 - Remove services with safety confirmations
 - Live monitoring with auto-refresh every 30 seconds
+- Viewport scrolling controls (Ctrl+U/D/B/F) for all views
+- Config view caching for stable display (5-second intervals)
 
 🖥️ **Multiple Views**
 - **Dashboard (1)**: Service overview with quick actions
@@ -99,6 +101,12 @@ r              Refresh services (live data)
 q or Ctrl+C    Quit application
 /              Search services/templates
 Esc            Clear search or go back
+
+# Viewport Scrolling (works in all views)
+Ctrl+U         Scroll up (5 lines)
+Ctrl+D         Scroll down (5 lines)
+Ctrl+B         Page up (full screen)
+Ctrl+F         Page down (full screen)
 ```
 
 #### Dashboard View
@@ -109,6 +117,10 @@ Enter/Space    Execute selected quick action:
                • Stop All Services  
                • Refresh Data
                • Add New Service (goes to Templates)
+
+# Viewport Controls
+Ctrl+U/D       Scroll service list up/down
+Ctrl+B/F       Page up/down in service list
 ```
 
 #### Services View
@@ -119,6 +131,10 @@ x              Stop selected service
 R              Restart selected service
 d or Delete    Remove selected service (with confirmation)
 Enter          View logs for selected service
+
+# Viewport Controls
+Ctrl+U/D       Scroll service list up/down
+Ctrl+B/F       Page up/down in service list
 ```
 
 #### Logs View
@@ -127,6 +143,10 @@ Enter          View logs for selected service
 Enter          Start/stop real-time log streaming
 c              Clear current logs
 f              Filter logs (search within log content)
+
+# Viewport Controls  
+Ctrl+U/D       Scroll log content up/down
+Ctrl+B/F       Page up/down in log content
 ```
 
 #### Templates View
@@ -134,6 +154,10 @@ f              Filter logs (search within log content)
 ↑/↓ or j/k     Navigate template list
 Enter or a     Add service from selected template
                (opens interactive prompt for service name)
+
+# Viewport Controls
+Ctrl+U/D       Scroll template list up/down
+Ctrl+B/F       Page up/down in template list
 ```
 
 ### TUI Screenshots
@@ -398,6 +422,8 @@ The `remove` command automatically stops running Docker containers before removi
   - [x] Safety confirmations and input validation
   - [x] Search and filtering capabilities
   - [x] Demo mode for exploration without Docker
+  - [x] Viewport scrolling controls (Ctrl+U/D/B/F) for all views
+  - [x] Config view caching to prevent rapid refreshing (5-second intervals)
 - [ ] Profile management
 - [ ] Advanced health checks
 - [ ] Network management
