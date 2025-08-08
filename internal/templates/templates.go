@@ -50,6 +50,12 @@ func GetBuiltinTemplates() map[string]Template {
 					"POSTGRES_DB":       "{{.DB_NAME}}",
 				},
 				Volume: "{{.VOLUME_NAME}}",
+				HealthCheck: &config.HealthCheck{
+					Test:     []string{"CMD-SHELL", "pg_isready -U {{.DB_USER}} -d {{.DB_NAME}}"},
+					Interval: "30s",
+					Timeout:  "10s",
+					Retries:  3,
+				},
 			},
 			Variables: []Variable{
 				{
@@ -173,6 +179,12 @@ func GetBuiltinTemplates() map[string]Template {
 				Image: "redis:{{.VERSION}}",
 				Ports: []string{"{{.PORT}}:6379"},
 				Volume: "{{.VOLUME_NAME}}",
+				HealthCheck: &config.HealthCheck{
+					Test:     []string{"CMD", "redis-cli", "ping"},
+					Interval: "30s",
+					Timeout:  "3s",
+					Retries:  3,
+				},
 			},
 			Variables: []Variable{
 				{

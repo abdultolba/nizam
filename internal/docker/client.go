@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/docker/docker/api/types"
@@ -89,6 +90,44 @@ func (c *Client) StartService(ctx context.Context, serviceName string, serviceCo
 			"nizam.service": serviceName,
 			"nizam.managed": "true",
 		},
+	}
+
+	// Add health check if configured
+	if serviceConfig.HealthCheck != nil && len(serviceConfig.HealthCheck.Test) > 0 {
+		healthConfig := &container.HealthConfig{
+			Test: serviceConfig.HealthCheck.Test,
+		}
+
+		// Parse interval
+		if serviceConfig.HealthCheck.Interval != "" {
+			if interval, err := time.ParseDuration(serviceConfig.HealthCheck.Interval); err == nil {
+				healthConfig.Interval = interval
+			} else {
+				healthConfig.Interval = 30 * time.Second // default
+			}
+		} else {
+			healthConfig.Interval = 30 * time.Second // default
+		}
+
+		// Parse timeout
+		if serviceConfig.HealthCheck.Timeout != "" {
+			if timeout, err := time.ParseDuration(serviceConfig.HealthCheck.Timeout); err == nil {
+				healthConfig.Timeout = timeout
+			} else {
+				healthConfig.Timeout = 10 * time.Second // default
+			}
+		} else {
+			healthConfig.Timeout = 10 * time.Second // default
+		}
+
+		// Set retries
+		if serviceConfig.HealthCheck.Retries > 0 {
+			healthConfig.Retries = serviceConfig.HealthCheck.Retries
+		} else {
+			healthConfig.Retries = 3 // default
+		}
+
+		containerConfig.Healthcheck = healthConfig
 	}
 
 	if len(serviceConfig.Command) > 0 {
