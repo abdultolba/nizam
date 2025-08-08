@@ -10,6 +10,7 @@
 - 🖥️ **Interactive TUI**: Full-featured terminal interface for visual service management
 - 🎛️ **Interactive template configuration**: Customize ports, credentials, and settings
 - 📊 **Service monitoring**: `nizam status` shows health of all services
+- 🏥 **Advanced Health Checks**: Built-in health monitoring with HTTP server and web dashboard
 - 📝 **Log tailing**: `nizam logs redis` to debug issues
 - 💻 **Direct service interaction**: `nizam exec postgres psql -U user`
 - ⚙️ **Profile support**: Multiple configurations for `dev`, `test`, `ci`
@@ -399,6 +400,235 @@ nizam rm postgres
 
 The `remove` command automatically stops running Docker containers before removing services from the configuration.
 
+## Health Check System 🏥
+
+nizam includes a comprehensive health check system that monitors your services through multiple check types and provides both CLI and web-based interfaces for monitoring.
+
+### Health Check Features
+
+- 🔍 **Multiple Check Types**: Command execution, HTTP requests, and Docker status checks
+- 📊 **Built-in Templates**: Pre-configured health checks for common services (PostgreSQL, MySQL, Redis)
+- 🖥️ **CLI Monitoring**: Query health status with multiple output formats
+- 🌐 **HTTP Server & Dashboard**: Web-based monitoring with REST API
+- 📈 **Health History**: Track health check results over time
+- ⚡ **Real-time Updates**: Live monitoring with configurable intervals
+- 🎯 **Per-service Status**: Individual service health tracking and management
+
+### Quick Health Check Examples
+
+```bash
+# Check health of all services (table format)
+nizam health
+
+# Check specific service health
+nizam health postgres
+
+# Output in JSON format
+nizam health --output json
+
+# Watch health status continuously
+nizam health --watch
+
+# Watch with custom interval (5 seconds)
+nizam health --watch --interval 5
+
+# Compact status display
+nizam health --output compact
+```
+
+### Health Check CLI Commands
+
+#### `nizam health` - Health Status Query
+
+```bash
+# Usage patterns
+nizam health [service] [flags]
+
+# Examples
+nizam health                    # All services, table format
+nizam health postgres          # Specific service
+nizam health --output json     # JSON output
+nizam health --watch           # Continuous monitoring
+nizam health --watch --interval 5  # Custom watch interval
+
+# Available flags
+-o, --output string   Output format (table, json, compact)
+-w, --watch           Watch health status continuously  
+    --interval int    Watch interval in seconds (default 10)
+```
+
+**Output Formats:**
+- **table**: Formatted table with service details, status, and timestamps
+- **json**: Complete health data in JSON format for automation
+- **compact**: Minimal status display with emoji indicators
+
+#### `nizam health-server` - HTTP Health Monitor
+
+```bash
+# Launch health monitoring server
+nizam health-server [flags]
+
+# Examples
+nizam health-server                      # Start on :8080
+nizam health-server --address :9090     # Custom port
+nizam health-server --interval 15       # 15-second check interval
+nizam health-server --no-auto-start     # Manual health check start
+
+# Available flags
+    --address string   HTTP server address (default ":8080")
+    --interval int     Health check interval in seconds (default 30)
+    --auto-start       Auto-start health checking (default true)
+```
+
+### HTTP API Endpoints
+
+The health server provides REST API endpoints for integration:
+
+```bash
+# Get overall health summary
+GET /api/health
+
+# Get specific service health
+GET /api/services/{service}
+
+# Trigger immediate health check
+POST /api/check/{service}
+
+# Get all services health status
+GET /api/services
+```
+
+**Example API Response:**
+```json
+{
+  "service": "postgres",
+  "status": "healthy",
+  "is_running": true,
+  "container_name": "nizam-postgres",
+  "image": "postgres:16",
+  "last_check": "2024-08-08T03:45:30Z",
+  "check_history": [
+    {
+      "status": "healthy",
+      "message": "pg_isready check passed",
+      "timestamp": "2024-08-08T03:45:30Z",
+      "duration": "12ms"
+    }
+  ]
+}
+```
+
+### Web Dashboard
+
+Access the web dashboard at `http://localhost:8080` when running the health server:
+
+- 📊 **Live Status Overview**: Real-time service health monitoring
+- 🔄 **Auto-refresh**: Configurable automatic status updates
+- 🎯 **Manual Triggers**: On-demand health check execution
+- 📈 **Health History**: Visual timeline of health check results
+- 🎨 **Responsive UI**: Clean, modern interface with status indicators
+
+### Health Check Configuration
+
+Services can include health check configurations in their templates:
+
+```yaml
+# Example service with health checks
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - 5432:5432
+    env:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "user"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+**Health Check Types:**
+
+1. **Command Checks**: Execute commands inside containers
+   ```yaml
+   test: ["CMD", "pg_isready", "-U", "user"]
+   test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
+   ```
+
+2. **HTTP Checks**: Automatically detected from curl/wget commands
+   ```yaml
+   test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+   ```
+
+3. **Docker Status**: Default fallback using container running status
+
+### Built-in Health Checks
+
+Common service templates include pre-configured health checks:
+
+| Service | Health Check | Command |
+|---------|-------------|----------|
+| **PostgreSQL** | `pg_isready` | Database connection test |
+| **MySQL** | `mysqladmin ping` | Database ping test |
+| **Redis** | `redis-cli ping` | Redis ping command |
+| **MongoDB** | `mongosh --eval` | Database status check |
+| **Elasticsearch** | HTTP health API | `GET /_health` endpoint |
+
+### Health Status Types
+
+- 🟢 **healthy**: Service is running and responding correctly
+- 🔴 **unhealthy**: Service is running but health check failed
+- 🟡 **starting**: Service is starting up (within start_period)
+- ⚫ **not_running**: Docker container is not running
+- 🟣 **unknown**: Health check status could not be determined
+
+### Integration with TUI
+
+The health check system integrates with the TUI for visual monitoring:
+
+- Health status indicators in service listings
+- Real-time health updates in dashboard view
+- Health check history in service details
+- Manual health check triggers from interface
+
+### Use Cases
+
+**Development Workflow:**
+```bash
+# Start services
+nizam up postgres redis
+
+# Monitor health during startup
+nizam health --watch
+
+# Check specific service issues
+nizam health postgres
+
+# Launch web dashboard for team monitoring
+nizam health-server --address :8080
+```
+
+**CI/CD Integration:**
+```bash
+# Wait for services to be healthy
+nizam health --output json | jq '.status == "healthy"'
+
+# Automated health monitoring
+nizam health-server --no-auto-start &
+curl http://localhost:8080/api/health
+```
+
+**Team Monitoring:**
+```bash
+# Shared health dashboard
+nizam health-server --address :3030
+
+# Team members access: http://dev-server:3030
+```
+
 ## Development Status
 
 🚧 **This project is in active development**
@@ -409,6 +639,14 @@ The `remove` command automatically stops running Docker containers before removi
 - [x] Config file parsing
 - [x] Service definitions
 - [x] Basic health checking
+- [x] **Advanced Health Check System**: Comprehensive health monitoring with multiple interfaces
+  - [x] Health check engine with command, HTTP, and Docker status checks
+  - [x] CLI health commands (`nizam health`, `nizam health-server`)
+  - [x] HTTP server with REST API endpoints and web dashboard
+  - [x] Built-in health checks for common services (PostgreSQL, MySQL, Redis)
+  - [x] Health check history tracking and real-time monitoring
+  - [x] Multiple output formats (table, JSON, compact) and watch mode
+  - [x] Docker native healthcheck integration during container creation
 - [x] Log streaming
 - [x] Service templates (16 built-in templates)
 - [x] Interactive template variables (postgres, mysql, redis, mongodb, rabbitmq)
@@ -425,7 +663,6 @@ The `remove` command automatically stops running Docker containers before removi
   - [x] Viewport scrolling controls (Ctrl+U/D/B/F) for all views
   - [x] Config view caching to prevent rapid refreshing (5-second intervals)
 - [ ] Profile management
-- [ ] Advanced health checks
 - [ ] Network management
 
 ## Contributing
