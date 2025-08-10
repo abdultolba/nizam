@@ -13,7 +13,7 @@ Welcome to the comprehensive documentation for nizam, the Local Structured Servi
 - **[CLI Commands Documentation](COMMANDS.md)** - Complete reference for all nizam commands
   - Core operations (`up`, `down`, `status`, `logs`, `exec`)
   - Configuration management (`init`, `validate`, `lint`, `add`, `remove`)
-  - Data lifecycle management (`snapshot`, `psql`, `redis-cli`)
+  - Data lifecycle management (`snapshot`, `psql`, `mysql`, `redis-cli`)
   - Health & monitoring (`doctor`, `health`, `health-server`)
   - Development tools (`wait-for`, `retry`, `completion`, `update`)
 
@@ -77,7 +77,7 @@ Welcome to the comprehensive documentation for nizam, the Local Structured Servi
 - **Shell Completion** - Multi-shell completion support
 
 ### Data Lifecycle Management
-- **Database Snapshots** - Point-in-time backup and restore for PostgreSQL and Redis
+- **Database Snapshots** - Point-in-time backup and restore for PostgreSQL, MySQL, and Redis
 - **One-liner Database Access** - Smart CLI tools with auto-resolved connections
 - **Compression & Integrity** - zstd/gzip compression with SHA256 verification
 - **Atomic Operations** - Safe creation and restoration with temporary files

@@ -17,12 +17,13 @@
 ### Data Lifecycle Management
 
 - 📸 **Database Snapshots**: Create, restore, list, and prune database snapshots with `nizam snapshot`
-  - **Multi-engine support**: PostgreSQL and Redis (MySQL/MongoDB planned)
+  - **Multi-engine support**: PostgreSQL, MySQL, and Redis (MongoDB planned)
   - **Compression options**: zstd (default), gzip, or none
   - **Atomic operations**: Safe snapshot creation and restoration
   - **Metadata tracking**: Tagged snapshots with notes and checksums
 - 🔗 **One-liner Database Access**: Smart CLI tools with auto-resolved connections
   - `nizam psql [service]` - Connect to PostgreSQL with resolved credentials
+  - `nizam mysql [service]` - Connect to MySQL with auto-resolved credentials
   - `nizam redis-cli [service]` - Connect to Redis with auto-configuration
   - **Fallback execution**: Uses host binaries or container execution automatically
 
@@ -497,7 +498,7 @@ Create point-in-time snapshots of your databases for backup, testing, or sharing
 
 #### Snapshot Features
 
-- 🎯 **Multi-engine support**: PostgreSQL and Redis (MySQL/MongoDB planned)
+- 🎯 **Multi-engine support**: PostgreSQL, MySQL, and Redis (MongoDB planned)
 - 🗜️ **Smart compression**: zstd (default), gzip, or none with automatic streaming
 - 🔒 **Data integrity**: SHA256 checksums for all snapshot files
 - 📋 **Rich metadata**: Tagged snapshots with notes, timestamps, and version tracking
@@ -539,6 +540,7 @@ nizam snapshot prune postgres --keep 5
 ```bash
 # Basic snapshot creation
 nizam snapshot create postgres
+nizam snapshot create mysql
 nizam snapshot create redis
 
 # With custom options
@@ -628,6 +630,31 @@ nizam psql postgres -- -c "\\l"
     --user string     Username (override config)
 ```
 
+#### MySQL Access
+
+**`nizam mysql [service]`**
+
+```bash
+# Connect to first/default MySQL service
+nizam mysql
+
+# Connect to specific service
+nizam mysql mysql
+nizam mysql api-db
+
+# Override connection parameters
+nizam mysql --user root --db mysql
+
+# Pass arguments to mysql client
+nizam mysql -- --help
+nizam mysql -- -e "SHOW DATABASES"
+nizam mysql api-db -- -e "SELECT version()"
+```
+
+**Available flags:**
+- `--db string` - Database name (override config)
+- `--user string` - Username (override config)
+
 #### Redis Access
 
 **`nizam redis-cli [service]`**
@@ -673,10 +700,12 @@ The one-liner commands automatically resolve connection details from your config
 # Smart connection (auto-resolves everything)
 nizam psql                           # Connects automatically
 nizam psql -- -c "SELECT version()"   # Runs query with auto-connection
+nizam mysql                          # Connects to MySQL automatically
+nizam mysql -- -e "SHOW DATABASES"    # Runs MySQL query with auto-connection
 
 # Raw container execution (manual specification required)
 nizam exec postgres psql -U user -d mydb -h localhost
-nizam exec postgres psql -U user -c "SELECT version()" mydb
+nizam exec mysql mysql -u user -pmypass mydb
 ```
 
 **Example Resolution:**
@@ -702,6 +731,15 @@ psql "postgresql://myuser:mypass@localhost:5432/mydb?sslmode=disable"
 
 # Or if psql not on host:
 docker exec -it nizam_postgres psql -U myuser -d mydb
+
+# For MySQL:
+nizam mysql
+
+# Resolves to:
+mysql -h localhost -P 3306 -u myuser -pmypass mydb
+
+# Or if mysql not on host:
+docker exec -it nizam_mysql mysql -u myuser -h localhost -pmypass mydb
 ```
 
 ## Development & Operations Tools 🛠️
@@ -1017,7 +1055,7 @@ nizam doctor --fix
 ### Data Lifecycle Management ✅
 
 - [x] **Database Snapshots** (`nizam snapshot`): Complete snapshot lifecycle management
-  - [x] PostgreSQL and Redis snapshot engines with streaming dumps
+  - [x] PostgreSQL, MySQL, and Redis snapshot engines with streaming dumps
   - [x] Multi-compression support (zstd, gzip, none) with checksum verification
   - [x] Rich manifest system with metadata, tags, and notes
   - [x] Atomic operations with temporary files and safe renames
@@ -1025,6 +1063,7 @@ nizam doctor --fix
   - [x] Create, list, restore, and prune operations with comprehensive CLI
 - [x] **One-liner Database Access**: Smart database CLI tools
   - [x] `nizam psql [service]` - Auto-resolved PostgreSQL connections
+  - [x] `nizam mysql [service]` - Auto-resolved MySQL connections
   - [x] `nizam redis-cli [service]` - Auto-resolved Redis connections
   - [x] Service auto-discovery and credential resolution from configuration
   - [x] Host binary detection with container execution fallback
@@ -1042,7 +1081,8 @@ nizam doctor --fix
 
 ### Planned Data Lifecycle Features 🔄
 
-- [ ] **MySQL & MongoDB Snapshots**: Extend snapshot support to additional databases
+- [x] **MySQL Snapshots & CLI**: MySQL database snapshot and one-liner access support ✅
+- [ ] **MongoDB Snapshots & CLI**: MongoDB snapshot support and one-liner access
 - [ ] **Seed Pack System**: Versioned, shareable dataset management
   - [ ] Local seed pack registry with versioning
   - [ ] Team/remote registry support (Git, URL-based)
@@ -1051,7 +1091,6 @@ nizam doctor --fix
   - [ ] Built-in masking profiles (minimal-pii, full-pii, payments-safe)
   - [ ] Custom YAML-based masking rule definitions
   - [ ] Deterministic faker for consistent data transformation
-- [ ] **Additional Database CLIs**: MySQL, MongoDB one-liner access
 - [ ] **Encryption Support**: Age-based snapshot encryption
 - [ ] **S3 Integration**: Remote snapshot storage and registries
 

@@ -125,6 +125,12 @@ func GetBuiltinTemplates() map[string]Template {
 					"MYSQL_PASSWORD":      "{{.DB_PASSWORD}}",
 				},
 				Volume: "{{.VOLUME_NAME}}",
+				HealthCheck: &config.HealthCheck{
+					Test:     []string{"CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "{{.DB_USER}}", "-p{{.DB_PASSWORD}}"},
+					Interval: "30s",
+					Timeout:  "10s",
+					Retries:  3,
+				},
 			},
 			Variables: []Variable{
 				{

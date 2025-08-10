@@ -16,7 +16,7 @@ Create point-in-time snapshots of your databases for backup, testing, or sharing
 
 ### Features
 
-- 🎯 **Multi-engine support**: PostgreSQL and Redis (MySQL/MongoDB planned)
+- 🎯 **Multi-engine support**: PostgreSQL, MySQL, and Redis (MongoDB planned)
 - 🗜️ **Smart compression**: zstd (default), gzip, or none with automatic streaming
 - 🔒 **Data integrity**: SHA256 checksums for all snapshot files
 - 📋 **Rich metadata**: Tagged snapshots with notes, timestamps, and version tracking
@@ -51,6 +51,7 @@ Create a snapshot of a service database.
 ```bash
 # Basic usage
 nizam snapshot create postgres
+nizam snapshot create mysql
 nizam snapshot create redis
 
 # With options
@@ -295,6 +296,59 @@ psql "postgresql://myuser:mypass@localhost:5432/mydb?sslmode=disable"
 docker exec -it nizam_postgres psql -U myuser -d mydb
 ```
 
+### MySQL Access
+
+#### `nizam mysql [service]`
+
+Connect to MySQL services with auto-resolved credentials.
+
+```bash
+# Connect to first/default MySQL service
+nizam mysql
+
+# Connect to specific service
+nizam mysql mysql
+nizam mysql api-db
+
+# Override connection parameters
+nizam mysql --user root --db mysql
+
+# Pass arguments to mysql client
+nizam mysql -- --help
+nizam mysql -- -e "SHOW DATABASES"
+nizam mysql api-db -- -e "SELECT version()"
+```
+
+**Flags:**
+
+- `--db string` - Database name (override config)
+- `--user string` - Username (override config)
+
+**Connection Resolution Example:**
+
+Given this configuration:
+
+```yaml
+services:
+  mysql:
+    image: mysql:8.0
+    ports: ["3306:3306"]
+    env:
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypass
+      MYSQL_DATABASE: mydb
+```
+
+The command `nizam mysql` resolves to:
+
+```bash
+# If mysql available on host:
+mysql -h localhost -P 3306 -u myuser -pmypass mydb
+
+# If mysql not available on host:
+docker exec -it nizam_mysql mysql -u myuser -h localhost -pmypass mydb
+```
+
 ### Redis Access
 
 #### `nizam redis-cli [service]`
@@ -356,6 +410,8 @@ Understanding the difference between smart connection commands and raw container
 ```bash
 nizam psql                           # Auto-connects
 nizam psql -- -c "SELECT version()"  # Runs query automatically
+nizam mysql                          # Auto-connects to MySQL
+nizam mysql -- -e "SHOW DATABASES"   # Runs MySQL query automatically
 nizam redis-cli -- ping             # Auto-authenticated ping
 ```
 
@@ -363,6 +419,7 @@ nizam redis-cli -- ping             # Auto-authenticated ping
 
 ```bash
 nizam exec postgres psql -U user -d mydb -h localhost
+nizam exec mysql mysql -u user -pmypass mydb
 nizam exec redis redis-cli -a password ping
 ```
 
@@ -378,6 +435,14 @@ nizam uses engine-specific implementations for different database types:
 - Streams output directly to compressed files
 - Restores using `pg_restore --clean --if-exists`
 - Handles connection parameters from service environment
+
+#### MySQL Engine
+
+- Uses `mysqldump` with comprehensive options for consistent dumps
+- Includes routines, triggers, events, and complete inserts
+- Restores using `mysql` client with streaming support
+- Handles connection parameters from service environment variables
+- Supports both MySQL and MariaDB containers
 
 #### Redis Engine
 

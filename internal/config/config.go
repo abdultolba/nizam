@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -35,8 +36,22 @@ type HealthCheck struct {
 
 // LoadConfig loads the configuration from file or returns defaults
 func LoadConfig() (*Config, error) {
+	return LoadConfigFromFile("")
+}
+
+// LoadConfigFromFile loads configuration from the specified file path,
+// or uses default detection if path is empty
+func LoadConfigFromFile(configPath string) (*Config, error) {
+	if configPath == "" {
+		// Use viper to get the config file path (respects --config flag)
+		configPath = viper.ConfigFileUsed()
+		if configPath == "" {
+			// If no config file was found by viper, try default paths
+			configPath = GetConfigPath()
+		}
+	}
+
 	// Read the YAML file directly to preserve key case
-	configPath := GetConfigPath()
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)

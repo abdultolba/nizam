@@ -7,6 +7,7 @@ import (
 	"hash"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -217,6 +218,37 @@ type nopCloser struct {
 
 func (nc *nopCloser) Close() error {
 	return nil
+}
+
+// DetectCompression detects compression type from file extension
+func DetectCompression(filename string) Compression {
+	if strings.HasSuffix(filename, ".zst") {
+		return CompZstd
+	}
+	if strings.HasSuffix(filename, ".gz") {
+		return CompGzip
+	}
+	return CompNone
+}
+
+// HashWriter is a writer that only calculates checksums and discards data
+type HashWriter struct {
+	hasher hash.Hash
+}
+
+// NewHashWriter creates a new hash writer
+func NewHashWriter() *HashWriter {
+	return &HashWriter{hasher: sha256.New()}
+}
+
+// Write implements io.Writer, calculates hash but discards data
+func (hw *HashWriter) Write(p []byte) (int, error) {
+	return hw.hasher.Write(p)
+}
+
+// Sum returns the current hash sum as a hex string
+func (hw *HashWriter) Sum() string {
+	return fmt.Sprintf("%x", hw.hasher.Sum(nil))
 }
 
 // zstdReaderCloser wraps zstd.Decoder to provide proper Close method

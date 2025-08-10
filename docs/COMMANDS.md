@@ -266,6 +266,37 @@ nizam psql postgres -- -c "\\l"
 - `nizam psql` auto-resolves credentials and builds connection strings
 - `nizam exec postgres psql` requires manual specification of all connection details
 
+### `nizam mysql`
+Connect to MySQL services with auto-resolved credentials.
+
+```bash
+# Connect to first/default MySQL service
+nizam mysql
+
+# Connect to specific service
+nizam mysql mysql
+nizam mysql api-db
+
+# Override connection parameters
+nizam mysql --user root --db mysql
+
+# Pass arguments to mysql client
+nizam mysql -- --help
+nizam mysql -- -e "SHOW DATABASES"
+nizam mysql api-db -- -e "SELECT version()"
+```
+
+**Options:**
+- `--db string` - Database name (override config)
+- `--user string` - Username (override config)
+
+**Key Features:**
+- Auto-discovers MySQL services from configuration
+- Extracts credentials from environment variables (MYSQL_USER, MYSQL_PASSWORD, etc.)
+- Uses host binaries when available, falls back to container execution
+- Supports both MySQL and MariaDB containers
+- Supports pass-through arguments after `--`
+
 ### `nizam redis-cli`
 Connect to Redis services with auto-configuration.
 
