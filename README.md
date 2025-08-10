@@ -6,15 +6,27 @@
 
 ## Features
 
+### Core Service Management
 - 🚀 **One-command service management**: `nizam up postgres redis`
-- 🖥️ **Interactive TUI**: Full-featured terminal interface for visual service management
 - 🎛️ **Interactive template configuration**: Customize ports, credentials, and settings
 - 📊 **Service monitoring**: `nizam status` shows health of all services
-- 🏥 **Advanced Health Checks**: Built-in health monitoring with HTTP server and web dashboard
 - 📝 **Log tailing**: `nizam logs redis` to debug issues
 - 💻 **Direct service interaction**: `nizam exec postgres psql -U user`
-- ⚙️ **Profile support**: Multiple configurations for `dev`, `test`, `ci`
 - 🐳 **Docker-native**: Uses Docker containers with sensible defaults
+
+### Development & Operations Tools
+- 🩺 **Environment Doctor**: Comprehensive preflight checks with `nizam doctor`
+- 🔍 **Configuration Linting**: Best practices validation with `nizam lint`
+- ✅ **Config Validation**: Syntax and structure validation with `nizam validate`
+- ⚡ **Retry Operations**: Exponential backoff retry for failed operations
+- 🕒 **Service Readiness**: Wait for services with `nizam wait-for`
+- 🔄 **Self-Update**: Automatic updates from GitHub releases
+- 🧩 **Shell Completion**: Multi-shell completion support
+
+### Interactive Interfaces  
+- 🖥️ **Interactive TUI**: Full-featured terminal interface for visual service management
+- 🏥 **Advanced Health Checks**: Built-in health monitoring with HTTP server and web dashboard
+- ⚙️ **Profile support**: Multiple configurations for `dev`, `test`, `ci`
 
 ## Quick Start
 
@@ -629,16 +641,258 @@ nizam health-server --address :3030
 # Team members access: http://dev-server:3030
 ```
 
+## Development & Operations Tools 🛠️
+
+nizam includes comprehensive tooling for development workflow optimization, environment validation, and operational reliability.
+
+### Environment Doctor (`nizam doctor`)
+
+Comprehensive preflight environment checks to ensure your Docker setup is ready for development.
+
+```bash
+# Run all environment checks
+nizam doctor
+
+# Skip specific checks  
+nizam doctor --skip net.mtu,disk.free
+
+# JSON output for CI/CD integration
+nizam doctor --json
+
+# Attempt automatic fixes
+nizam doctor --fix
+
+# Verbose output with detailed diagnostics
+nizam doctor --verbose
+```
+
+**Checks Performed:**
+- 🐳 **Docker connectivity** - Verify Docker daemon is running
+- 🔧 **Docker Compose** - Ensure compose plugin is available
+- 💾 **Disk space** - Check available storage (warns if <1GB)
+- 🌐 **Network MTU** - Validate network configuration
+- 🚪 **Port conflicts** - Dynamic port availability for all configured services
+
+**Sample Output:**
+```
+✔ docker.daemon       Docker daemon responding
+✔ docker.compose      Docker Compose plugin available
+! net.mtu              non-standard MTU detected
+  VPNs may lower MTU; if Docker networking is flaky, align MTU in daemon.json
+✖ port.5432            port in use
+  Change host port for service postgres in .nizam.yaml
+  Or stop the process using the port
+```
+
+### Configuration Validation (`nizam validate`)
+
+Validate configuration file syntax and structure before deployment.
+
+```bash
+# Validate default configuration
+nizam validate
+
+# Validate specific file
+nizam validate --file ./production.yaml
+
+# JSON output for automation
+nizam validate --json
+
+# Strict mode (exit non-zero on any issues)
+nizam validate --strict
+```
+
+**Validation Features:**
+- ✅ YAML syntax validation
+- 🔍 Service structure verification
+- 📋 Required field checking
+- 🔢 Profile validation
+- 📊 Multiple output formats
+
+### Configuration Linting (`nizam lint`)
+
+Analyze configurations for best practices and potential issues.
+
+```bash
+# Lint default configuration
+nizam lint
+
+# Lint specific file
+nizam lint --file ./config.yaml
+
+# JSON output for CI/CD pipelines
+nizam lint --json
+```
+
+**Linting Rules:**
+- 🚫 **no-latest**: Prevents `:latest` image tags (reproducibility)
+- 🔌 **ports-shape**: Validates port mapping format
+- ⚡ **limits**: Recommends resource limits for consistency
+
+**Sample Output:**
+```
+✖ services.web.image: image tag missing or ':latest' not allowed (no-latest)
+  Fix: pin to a specific tag, e.g. 'nginx:1.21'
+
+! services.database: consider setting CPU/memory limits (limits)
+  Fix: add 'resources: { cpus: "1.0", memory: "512m" }'
+```
+
+### Service Readiness (`nizam wait-for`)
+
+Wait for services to become ready before proceeding with dependent operations.
+
+```bash
+# Wait for specific service
+nizam wait-for database
+
+# Wait for multiple services
+nizam wait-for web database cache
+
+# Wait for all services
+nizam wait-for
+
+# Custom timeout and check interval
+nizam wait-for --timeout 60s --interval 2s database
+```
+
+**Readiness Checks:**
+- 🔌 **Port connectivity** - TCP connection tests
+- 🌐 **HTTP health checks** - Endpoint availability
+- 🐳 **Container status** - Docker container state
+- ⏱️ **Configurable timeouts** - Flexible waiting strategies
+
+### Retry Operations (`nizam retry`)
+
+Retry failed operations with intelligent exponential backoff.
+
+```bash
+# Retry start command with defaults
+nizam retry start
+
+# Custom retry attempts and delay
+nizam retry start --attempts 5 --delay 2s
+
+# Retry specific services
+nizam retry start web database --attempts 3
+```
+
+**Supported Operations:**
+- 🚀 `start` - Start services with retry
+- ⏹️ `stop` - Stop services with retry
+- 🔄 `restart` - Restart services with retry
+- 📥 `pull` - Pull images with retry
+- 🏗️ `build` - Build images with retry
+
+**Retry Features:**
+- 📈 Exponential backoff (1s → 2s → 4s → 8s)
+- 🎯 Configurable attempts and delays
+- 📊 Progress reporting with attempt counters
+- 🔄 Graceful failure handling
+
+### Self-Update (`nizam update`)
+
+Keep nizam up-to-date with the latest features and fixes.
+
+```bash
+# Check for updates without installing
+nizam update --check
+
+# Update to latest stable version
+nizam update
+
+# Include prerelease versions
+nizam update --prerelease
+```
+
+**Update Features:**
+- 🔍 GitHub releases integration
+- 🖥️ Platform-specific binary detection
+- 🔄 Safe binary replacement with rollback
+- 🚀 Cross-platform support (Windows, macOS, Linux)
+- 📦 Prerelease channel support
+
+### Shell Completion (`nizam completion`)
+
+Generate completion scripts for faster command-line usage.
+
+```bash
+# Bash completion
+source <(nizam completion bash)
+
+# Zsh completion
+source <(nizam completion zsh)
+
+# Fish completion  
+nizam completion fish | source
+
+# PowerShell completion
+nizam completion powershell | Out-String | Invoke-Expression
+```
+
+**Installation Examples:**
+```bash
+# Bash (add to ~/.bashrc)
+echo 'source <(nizam completion bash)' >> ~/.bashrc
+
+# Zsh (add to ~/.zshrc)
+echo 'source <(nizam completion zsh)' >> ~/.zshrc
+```
+
+### Development Workflow Integration
+
+**Pre-commit Checks:**
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+nizam validate --strict && nizam lint && nizam doctor --json
+```
+
+**CI/CD Pipeline:**
+```yaml
+# .github/workflows/validate.yml
+- name: Validate nizam configuration
+  run: |
+    nizam doctor --json
+    nizam validate --strict
+    nizam lint --json
+```
+
+**Development Environment Setup:**
+```bash
+# Reliable environment startup
+nizam doctor                    # Check environment
+nizam validate                  # Validate config
+nizam retry start --attempts 3  # Start with retry
+nizam wait-for --timeout 60s    # Wait for readiness
+```
+
+**Production Deployment:**
+```bash
+# Production-ready checks
+nizam lint --json > lint-report.json
+nizam validate --strict --file production.yaml
+nizam doctor --fix
+```
+
 ## Development Status
 
 🚧 **This project is in active development**
 
-- [x] Project structure
+### Core Infrastructure ✅
+- [x] Project structure and modern Go standards
 - [x] Core CLI commands (`init`, `up`, `down`, `status`, `logs`, `exec`, `add`, `remove`)
-- [x] Docker integration
-- [x] Config file parsing
-- [x] Service definitions
-- [x] Basic health checking
+- [x] Docker integration with Compose support
+- [x] Configuration file parsing and validation
+- [x] Service definition system
+
+### Service Management ✅
+- [x] Service templates (16+ built-in templates)
+- [x] Interactive template variables (postgres, mysql, redis, mongodb, rabbitmq)
+- [x] Custom user templates (export, import, manage)
+- [x] Log streaming and real-time monitoring
+
+### Health & Monitoring ✅
 - [x] **Advanced Health Check System**: Comprehensive health monitoring with multiple interfaces
   - [x] Health check engine with command, HTTP, and Docker status checks
   - [x] CLI health commands (`nizam health`, `nizam health-server`)
@@ -647,10 +901,39 @@ nizam health-server --address :3030
   - [x] Health check history tracking and real-time monitoring
   - [x] Multiple output formats (table, JSON, compact) and watch mode
   - [x] Docker native healthcheck integration during container creation
-- [x] Log streaming
-- [x] Service templates (16 built-in templates)
-- [x] Interactive template variables (postgres, mysql, redis, mongodb, rabbitmq)
-- [x] Custom user templates (export, import, manage)
+
+### Development & Operations Tools ✅
+- [x] **Environment Doctor** (`nizam doctor`): Comprehensive preflight checks
+  - [x] Docker daemon and Compose plugin verification
+  - [x] System resource checks (disk space, network MTU)
+  - [x] Dynamic port conflict detection
+  - [x] JSON output and automatic fix attempts
+  - [x] Concurrent check execution with semaphores
+- [x] **Configuration Validation** (`nizam validate`): Syntax and structure validation
+  - [x] YAML parsing with detailed error reporting
+  - [x] Service structure verification
+  - [x] Multiple output formats and strict mode
+- [x] **Configuration Linting** (`nizam lint`): Best practices enforcement
+  - [x] Extensible rule framework with severity levels
+  - [x] Built-in rules (no-latest, ports-shape, limits)
+  - [x] JSON output for CI/CD integration
+- [x] **Service Readiness** (`nizam wait-for`): Wait for service availability
+  - [x] Port connectivity and HTTP health check support
+  - [x] Configurable timeouts and check intervals
+  - [x] Multi-service waiting with progress reporting
+- [x] **Retry Operations** (`nizam retry`): Exponential backoff for failed operations
+  - [x] Support for all major operations (start, stop, restart, pull, build)
+  - [x] Configurable attempts and delay intervals
+  - [x] Progress reporting with attempt counters
+- [x] **Self-Update** (`nizam update`): Automatic updates from GitHub releases
+  - [x] Platform-specific binary detection and safe replacement
+  - [x] Version comparison and prerelease support
+  - [x] Cross-platform compatibility (Windows, macOS, Linux)
+- [x] **Shell Completion** (`nizam completion`): Multi-shell completion support
+  - [x] Bash, Zsh, Fish, and PowerShell support
+  - [x] Dynamic command and flag completion
+
+### Interactive Interfaces ✅
 - [x] **Interactive TUI**: Full-featured terminal interface with real Docker operations
   - [x] Tron-themed cyberpunk design with animated status indicators
   - [x] Live service monitoring with auto-refresh
@@ -662,8 +945,21 @@ nizam health-server --address :3030
   - [x] Demo mode for exploration without Docker
   - [x] Viewport scrolling controls (Ctrl+U/D/B/F) for all views
   - [x] Config view caching to prevent rapid refreshing (5-second intervals)
-- [ ] Profile management
-- [ ] Network management
+
+### Documentation & Examples ✅
+- [x] Comprehensive README with feature documentation
+- [x] CLI commands documentation (`docs/COMMANDS.md`)
+- [x] Module-specific documentation (`internal/doctor/README.md`, `internal/lint/README.md`)
+- [x] Implementation status tracking (`FEATURE_IMPLEMENTATION.md`)
+- [x] Usage examples and integration patterns
+
+### Planned Features 🔄
+- [ ] **Profile Management**: Multi-environment configuration support
+- [ ] **Network Management**: Custom Docker network creation and management
+- [ ] **Plugin System**: Extensible architecture for third-party integrations
+- [ ] **Backup & Restore**: Service data backup and restoration
+- [ ] **Performance Monitoring**: Resource usage tracking and optimization
+- [ ] **Secret Management**: Secure credential handling and rotation
 
 ## Contributing
 
