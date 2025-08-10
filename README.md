@@ -1,7 +1,6 @@
-<!-- # nizam 🛠️ -->
 <p align="center">
-  <img src="https://res.cloudinary.com/friendly-social/image/upload/v1754795243/nizam_logo_bff9rc.png" alt="Nizam Logo" width="200" style="margin-bottom:-25px;"><br>
-  <b>nizam</b> is a powerful CLI tool to manage, monitor, and interact with local development services (Postgres, Redis, Meilisearch, etc.) using Docker. It helps you spin up, shut down, and interact with common services without manually writing `docker run` or service-specific commands.
+  <img src="https://res.cloudinary.com/friendly-social/image/upload/v1754795243/nizam_logo_bff9rc.png" alt="Nizam Logo" width="200" style="margin-bottom:-60px;"><br>
+  <b>nizam</b> is a powerful CLI tool to manage, monitor, and interact with local development services (Postgres, Redis, Meilisearch, etc.) using Docker. It helps you spin up, shut down, and interact with common services without manually writing <code>docker run</code> or service-specific commands.
 </p>
 
 ## Features
