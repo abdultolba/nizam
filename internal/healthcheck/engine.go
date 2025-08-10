@@ -18,11 +18,11 @@ import (
 type HealthStatus string
 
 const (
-	HealthStatusHealthy     HealthStatus = "healthy"
-	HealthStatusUnhealthy   HealthStatus = "unhealthy"
-	HealthStatusStarting    HealthStatus = "starting"
-	HealthStatusUnknown     HealthStatus = "unknown"
-	HealthStatusNotRunning  HealthStatus = "not_running"
+	HealthStatusHealthy    HealthStatus = "healthy"
+	HealthStatusUnhealthy  HealthStatus = "unhealthy"
+	HealthStatusStarting   HealthStatus = "starting"
+	HealthStatusUnknown    HealthStatus = "unknown"
+	HealthStatusNotRunning HealthStatus = "not_running"
 )
 
 // HealthCheckType represents different types of health checks
@@ -37,28 +37,28 @@ const (
 
 // HealthCheckResult contains the result of a health check
 type HealthCheckResult struct {
-	ServiceName  string        `json:"service_name"`
-	Status       HealthStatus  `json:"status"`
-	Message      string        `json:"message"`
-	CheckType    HealthCheckType `json:"check_type"`
-	Duration     time.Duration `json:"duration"`
-	Timestamp    time.Time     `json:"timestamp"`
-	Error        error         `json:"error,omitempty"`
-	Details      interface{}   `json:"details,omitempty"`
+	ServiceName string          `json:"service_name"`
+	Status      HealthStatus    `json:"status"`
+	Message     string          `json:"message"`
+	CheckType   HealthCheckType `json:"check_type"`
+	Duration    time.Duration   `json:"duration"`
+	Timestamp   time.Time       `json:"timestamp"`
+	Error       error           `json:"error,omitempty"`
+	Details     interface{}     `json:"details,omitempty"`
 }
 
 // ServiceHealthInfo contains comprehensive health information for a service
 type ServiceHealthInfo struct {
-	ServiceName    string              `json:"service_name"`
-	ContainerID    string              `json:"container_id,omitempty"`
-	ContainerName  string              `json:"container_name,omitempty"`
-	Image          string              `json:"image,omitempty"`
-	Status         HealthStatus        `json:"status"`
-	LastCheck      time.Time           `json:"last_check"`
-	Uptime         time.Duration       `json:"uptime,omitempty"`
-	CheckHistory   []HealthCheckResult `json:"check_history,omitempty"`
-	Configuration  *config.HealthCheck `json:"configuration,omitempty"`
-	IsRunning      bool                `json:"is_running"`
+	ServiceName   string              `json:"service_name"`
+	ContainerID   string              `json:"container_id,omitempty"`
+	ContainerName string              `json:"container_name,omitempty"`
+	Image         string              `json:"image,omitempty"`
+	Status        HealthStatus        `json:"status"`
+	LastCheck     time.Time           `json:"last_check"`
+	Uptime        time.Duration       `json:"uptime,omitempty"`
+	CheckHistory  []HealthCheckResult `json:"check_history,omitempty"`
+	Configuration *config.HealthCheck `json:"configuration,omitempty"`
+	IsRunning     bool                `json:"is_running"`
 }
 
 // Engine manages health checks for all services
@@ -210,7 +210,7 @@ func (e *Engine) checkService(ctx context.Context, serviceName string, serviceCo
 // performConfiguredHealthCheck runs a configured health check
 func (e *Engine) performConfiguredHealthCheck(ctx context.Context, serviceName string, healthCheck *config.HealthCheck, containerInfo *docker.ContainerInfo) HealthCheckResult {
 	start := time.Now()
-	
+
 	// Parse timeout
 	timeout := 10 * time.Second // default
 	if healthCheck.Timeout != "" {
@@ -272,10 +272,10 @@ func (e *Engine) performCommandHealthCheck(ctx context.Context, serviceName stri
 		// This could be enhanced to use the Docker API directly
 		dockerCmd := []string{"docker", "exec", containerInfo.Name}
 		dockerCmd = append(dockerCmd, command...)
-		
+
 		cmd := exec.CommandContext(ctx, dockerCmd[0], dockerCmd[1:]...)
 		output, err := cmd.CombinedOutput()
-		
+
 		if err != nil {
 			result.Status = HealthStatusUnhealthy
 			result.Message = fmt.Sprintf("Command failed: %v", err)
@@ -296,7 +296,7 @@ func (e *Engine) performCommandHealthCheck(ctx context.Context, serviceName stri
 		// Execute command on host (fallback)
 		cmd := exec.CommandContext(ctx, command[0], command[1:]...)
 		output, err := cmd.CombinedOutput()
-		
+
 		if err != nil {
 			result.Status = HealthStatusUnhealthy
 			result.Message = fmt.Sprintf("Host command failed: %v", err)
@@ -305,7 +305,7 @@ func (e *Engine) performCommandHealthCheck(ctx context.Context, serviceName stri
 			result.Status = HealthStatusHealthy
 			result.Message = "Host command executed successfully"
 		}
-		
+
 		result.Details = map[string]interface{}{
 			"command": command,
 			"output":  string(output),
@@ -330,12 +330,12 @@ func (e *Engine) performHTTPHealthCheck(ctx context.Context, serviceName string,
 	}
 
 	url := command[1]
-	
+
 	// Create HTTP client with timeout from context
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		result.Status = HealthStatusUnhealthy
@@ -397,8 +397,8 @@ func (e *Engine) performDefaultHealthCheck(ctx context.Context, serviceName stri
 		"container_id":     containerInfo.ID,
 		"container_name":   containerInfo.Name,
 		"container_status": containerInfo.Status,
-		"image":           containerInfo.Image,
-		"ports":           containerInfo.Ports,
+		"image":            containerInfo.Image,
+		"ports":            containerInfo.Ports,
 	}
 
 	return result
@@ -407,7 +407,7 @@ func (e *Engine) performDefaultHealthCheck(ctx context.Context, serviceName stri
 // addCheckResult adds a health check result to the service history
 func (e *Engine) addCheckResult(healthInfo *ServiceHealthInfo, result HealthCheckResult) {
 	healthInfo.CheckHistory = append(healthInfo.CheckHistory, result)
-	
+
 	// Keep only the last 10 results
 	if len(healthInfo.CheckHistory) > 10 {
 		healthInfo.CheckHistory = healthInfo.CheckHistory[1:]
@@ -418,17 +418,17 @@ func (e *Engine) addCheckResult(healthInfo *ServiceHealthInfo, result HealthChec
 func (e *Engine) GetServiceHealth(serviceName string) (*ServiceHealthInfo, bool) {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	info, exists := e.services[serviceName]
 	if !exists {
 		return nil, false
 	}
-	
+
 	// Create a copy to avoid race conditions
 	infoCopy := *info
 	infoCopy.CheckHistory = make([]HealthCheckResult, len(info.CheckHistory))
 	copy(infoCopy.CheckHistory, info.CheckHistory)
-	
+
 	return &infoCopy, true
 }
 
@@ -436,7 +436,7 @@ func (e *Engine) GetServiceHealth(serviceName string) (*ServiceHealthInfo, bool)
 func (e *Engine) GetAllServicesHealth() map[string]*ServiceHealthInfo {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	result := make(map[string]*ServiceHealthInfo)
 	for name, info := range e.services {
 		// Create a copy to avoid race conditions
@@ -445,7 +445,7 @@ func (e *Engine) GetAllServicesHealth() map[string]*ServiceHealthInfo {
 		copy(infoCopy.CheckHistory, info.CheckHistory)
 		result[name] = &infoCopy
 	}
-	
+
 	return result
 }
 
@@ -490,7 +490,7 @@ func (e *Engine) CheckServiceNow(ctx context.Context, serviceName string) (*Heal
 		}
 		e.services[serviceName] = healthInfo
 	}
-	
+
 	healthInfo.Status = result.Status
 	healthInfo.LastCheck = result.Timestamp
 	if containerInfo != nil {
@@ -499,7 +499,7 @@ func (e *Engine) CheckServiceNow(ctx context.Context, serviceName string) (*Heal
 		healthInfo.Image = containerInfo.Image
 		healthInfo.IsRunning = strings.Contains(strings.ToLower(containerInfo.Status), "up")
 	}
-	
+
 	e.addCheckResult(healthInfo, result)
 	e.mutex.Unlock()
 
@@ -510,7 +510,7 @@ func (e *Engine) CheckServiceNow(ctx context.Context, serviceName string) (*Heal
 func (e *Engine) GetHealthSummary() map[string]interface{} {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	
+
 	summary := map[string]interface{}{
 		"total_services": len(e.services),
 		"healthy":        0,
@@ -520,7 +520,7 @@ func (e *Engine) GetHealthSummary() map[string]interface{} {
 		"unknown":        0,
 		"last_updated":   time.Now(),
 	}
-	
+
 	for _, info := range e.services {
 		switch info.Status {
 		case HealthStatusHealthy:
@@ -535,7 +535,7 @@ func (e *Engine) GetHealthSummary() map[string]interface{} {
 			summary["unknown"] = summary["unknown"].(int) + 1
 		}
 	}
-	
+
 	return summary
 }
 

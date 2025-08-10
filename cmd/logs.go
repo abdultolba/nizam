@@ -86,6 +86,6 @@ Use --follow to continuously stream new logs.`,
 func init() {
 	logsCmd.Flags().BoolVarP(&follow, "follow", "f", false, "Follow log output")
 	logsCmd.Flags().StringVarP(&tail, "tail", "t", "50", "Number of lines to show from the end of the logs")
-	
+
 	rootCmd.AddCommand(logsCmd)
 }

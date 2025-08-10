@@ -30,7 +30,7 @@ type Variable struct {
 	Description string `json:"description"`
 	Default     string `json:"default,omitempty"`
 	Required    bool   `json:"required,omitempty"`
-	Type        string `json:"type,omitempty"` // "string", "int", "bool", "port"
+	Type        string `json:"type,omitempty"`       // "string", "int", "bool", "port"
 	Validation  string `json:"validation,omitempty"` // regex or validation rules
 }
 
@@ -176,8 +176,8 @@ func GetBuiltinTemplates() map[string]Template {
 			Description: "Redis in-memory data store",
 			Tags:        []string{"cache", "database", "nosql", "redis"},
 			Service: config.Service{
-				Image: "redis:{{.VERSION}}",
-				Ports: []string{"{{.PORT}}:6379"},
+				Image:  "redis:{{.VERSION}}",
+				Ports:  []string{"{{.PORT}}:6379"},
 				Volume: "{{.VOLUME_NAME}}",
 				HealthCheck: &config.HealthCheck{
 					Test:     []string{"CMD", "redis-cli", "ping"},
@@ -411,8 +411,8 @@ func GetBuiltinTemplates() map[string]Template {
 			Description: "Prometheus monitoring system",
 			Tags:        []string{"monitoring", "metrics", "prometheus"},
 			Service: config.Service{
-				Image: "prom/prometheus:v2.47.0",
-				Ports: []string{"9090:9090"},
+				Image:  "prom/prometheus:v2.47.0",
+				Ports:  []string{"9090:9090"},
 				Volume: "prometheusdata",
 			},
 		},
@@ -477,7 +477,7 @@ func GetTemplateNames() []string {
 func GetTemplatesByTag(tag string) []Template {
 	templates := GetBuiltinTemplates()
 	var filtered []Template
-	
+
 	for _, template := range templates {
 		for _, templateTag := range template.Tags {
 			if templateTag == tag {
@@ -486,7 +486,7 @@ func GetTemplatesByTag(tag string) []Template {
 			}
 		}
 	}
-	
+
 	return filtered
 }
 
@@ -494,18 +494,18 @@ func GetTemplatesByTag(tag string) []Template {
 func GetAllTags() []string {
 	allTemplates := GetAllTemplates()
 	tagMap := make(map[string]bool)
-	
+
 	for _, template := range allTemplates {
 		for _, tag := range template.Tags {
 			tagMap[tag] = true
 		}
 	}
-	
+
 	tags := make([]string, 0, len(tagMap))
 	for tag := range tagMap {
 		tags = append(tags, tag)
 	}
-	
+
 	return tags
 }
 
@@ -522,40 +522,40 @@ func GetCustomTemplatesDir() string {
 func GetCustomTemplates() (map[string]Template, error) {
 	templatesDir := GetCustomTemplatesDir()
 	customTemplates := make(map[string]Template)
-	
+
 	// Check if templates directory exists
 	if _, err := os.Stat(templatesDir); os.IsNotExist(err) {
 		return customTemplates, nil // No custom templates yet
 	}
-	
+
 	// Read all .yaml files in the templates directory
 	files, err := filepath.Glob(filepath.Join(templatesDir, "*.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read templates directory: %w", err)
 	}
-	
+
 	for _, file := range files {
 		template, err := loadTemplateFromFile(file)
 		if err != nil {
 			// Log error but continue with other templates
 			continue
 		}
-		
+
 		// Use filename (without extension) as template name if not specified
 		if template.Name == "" {
 			template.Name = strings.TrimSuffix(filepath.Base(file), ".yaml")
 		}
-		
+
 		customTemplates[template.Name] = template
 	}
-	
+
 	return customTemplates, nil
 }
 
 // GetAllTemplates returns both built-in and custom templates
 func GetAllTemplates() map[string]Template {
 	allTemplates := GetBuiltinTemplates()
-	
+
 	// Add custom templates
 	customTemplates, err := GetCustomTemplates()
 	if err == nil {
@@ -567,7 +567,7 @@ func GetAllTemplates() map[string]Template {
 			allTemplates[name] = template
 		}
 	}
-	
+
 	return allTemplates
 }
 
@@ -585,7 +585,7 @@ func GetAllTemplateNames() []string {
 func GetAllTemplatesByTag(tag string) []Template {
 	templates := GetAllTemplates()
 	var filtered []Template
-	
+
 	for _, template := range templates {
 		for _, templateTag := range template.Tags {
 			if templateTag == tag {
@@ -594,34 +594,34 @@ func GetAllTemplatesByTag(tag string) []Template {
 			}
 		}
 	}
-	
+
 	return filtered
 }
 
 // SaveCustomTemplate saves a template to the custom templates directory
 func SaveCustomTemplate(template Template) error {
 	templatesDir := GetCustomTemplatesDir()
-	
+
 	// Create templates directory if it doesn't exist
 	if err := os.MkdirAll(templatesDir, 0755); err != nil {
 		return fmt.Errorf("failed to create templates directory: %w", err)
 	}
-	
+
 	// Generate filename from template name
 	filename := fmt.Sprintf("%s.yaml", template.Name)
 	filepath := filepath.Join(templatesDir, filename)
-	
+
 	// Marshal template to YAML
 	yamlData, err := yaml.Marshal(&template)
 	if err != nil {
 		return fmt.Errorf("failed to marshal template: %w", err)
 	}
-	
+
 	// Write to file
 	if err := os.WriteFile(filepath, yamlData, 0644); err != nil {
 		return fmt.Errorf("failed to write template file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -630,39 +630,39 @@ func DeleteCustomTemplate(name string) error {
 	templatesDir := GetCustomTemplatesDir()
 	filename := fmt.Sprintf("%s.yaml", name)
 	filepath := filepath.Join(templatesDir, filename)
-	
+
 	// Check if it's a built-in template
 	builtinTemplates := GetBuiltinTemplates()
 	if _, isBuiltin := builtinTemplates[name]; isBuiltin {
 		return fmt.Errorf("cannot delete built-in template '%s'", name)
 	}
-	
+
 	// Check if file exists
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		return fmt.Errorf("custom template '%s' not found", name)
 	}
-	
+
 	// Delete the file
 	if err := os.Remove(filepath); err != nil {
 		return fmt.Errorf("failed to delete template file: %w", err)
 	}
-	
+
 	return nil
 }
 
 // loadTemplateFromFile loads a template from a YAML file
 func loadTemplateFromFile(filepath string) (Template, error) {
 	var template Template
-	
+
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return template, fmt.Errorf("failed to read template file: %w", err)
 	}
-	
+
 	if err := yaml.Unmarshal(data, &template); err != nil {
 		return template, fmt.Errorf("failed to parse template file: %w", err)
 	}
-	
+
 	return template, nil
 }
 

@@ -103,33 +103,33 @@ var customShowCmd = &cobra.Command{
 		// Display template information
 		fmt.Printf("📋 Template: %s (%s)\n\n", template.Name, templateType)
 		fmt.Printf("Description: %s\n", template.Description)
-		
+
 		if len(template.Tags) > 0 {
 			fmt.Printf("Tags: %v\n", template.Tags)
 		}
-		
+
 		fmt.Println("\n🐳 Service Configuration:")
 		fmt.Printf("  Image: %s\n", template.Service.Image)
-		
+
 		if len(template.Service.Ports) > 0 {
 			fmt.Printf("  Ports: %v\n", template.Service.Ports)
 		}
-		
+
 		if len(template.Service.Environment) > 0 {
 			fmt.Printf("  Environment Variables:\n")
 			for key, value := range template.Service.Environment {
 				fmt.Printf("    %s: %s\n", key, value)
 			}
 		}
-		
+
 		if template.Service.Volume != "" {
 			fmt.Printf("  Volume: %s\n", template.Service.Volume)
 		}
-		
+
 		if len(template.Service.Command) > 0 {
 			fmt.Printf("  Command: %v\n", template.Service.Command)
 		}
-		
+
 		if len(template.Service.Networks) > 0 {
 			fmt.Printf("  Networks: %v\n", template.Service.Networks)
 		}

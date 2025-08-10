@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/spf13/cobra"
 	"github.com/abdultolba/nizam/internal/version"
+	"github.com/spf13/cobra"
 )
 
 type GitHubRelease struct {
@@ -42,7 +42,7 @@ It will replace the current binary with the new version.`,
   # Include prerelease versions
   nizam update --prerelease`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			currentVersion := version.Version
+			currentVersion := version.Version()
 			if currentVersion == "" || currentVersion == "dev" {
 				currentVersion = "unknown"
 			}
@@ -73,7 +73,7 @@ It will replace the current binary with the new version.`,
 			// Find appropriate asset for current platform
 			assetName := fmt.Sprintf("nizam_%s_%s", runtime.GOOS, runtime.GOARCH)
 			var downloadURL string
-			
+
 			for _, asset := range latest.Assets {
 				if asset.Name == assetName || asset.Name == assetName+".exe" {
 					downloadURL = asset.BrowserDownloadURL
@@ -86,7 +86,7 @@ It will replace the current binary with the new version.`,
 			}
 
 			fmt.Printf("Downloading %s...\n", latest.TagName)
-			
+
 			// Get current executable path
 			execPath, err := os.Executable()
 			if err != nil {

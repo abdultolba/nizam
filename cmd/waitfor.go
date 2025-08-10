@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/abdultolba/nizam/internal/config"
+	"github.com/spf13/cobra"
 )
 
 func NewWaitForCmd() *cobra.Command {
@@ -57,7 +57,7 @@ before starting dependent services.`,
 				servicesToWait = args
 			}
 
-			fmt.Printf("Waiting for %d service(s) to become ready (timeout: %v)...\n", 
+			fmt.Printf("Waiting for %d service(s) to become ready (timeout: %v)...\n",
 				len(servicesToWait), timeoutDuration)
 
 			start := time.Now()
@@ -161,7 +161,7 @@ func parsePortMapping(portMapping string) (hostPort, containerPort string, err e
 	if len(portMapping) == 0 {
 		return "", "", fmt.Errorf("empty port mapping")
 	}
-	
+
 	// For simplicity, assume format is "host:container" or just "port"
 	parts := []rune(portMapping)
 	colonIdx := -1
@@ -171,12 +171,12 @@ func parsePortMapping(portMapping string) (hostPort, containerPort string, err e
 			break
 		}
 	}
-	
+
 	if colonIdx == -1 {
 		// Just a port number
 		return portMapping, portMapping, nil
 	}
-	
+
 	hostPort = string(parts[:colonIdx])
 	containerPort = string(parts[colonIdx+1:])
 	return hostPort, containerPort, nil

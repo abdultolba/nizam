@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	serverAddress     string
-	serverInterval    int
-	serverAutoStart   bool
+	serverAddress   string
+	serverInterval  int
+	serverAutoStart bool
 )
 
 // healthServerCmd represents the health server command
@@ -41,7 +41,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(healthServerCmd)
-	
+
 	// Add flags
 	healthServerCmd.Flags().StringVar(&serverAddress, "address", ":8080", "HTTP server address to bind to")
 	healthServerCmd.Flags().IntVar(&serverInterval, "interval", 30, "Health check interval in seconds")
@@ -76,7 +76,7 @@ func runHealthServer(cmd *cobra.Command, args []string) error {
 		interval := time.Duration(serverInterval) * time.Second
 		healthEngine.Start(ctx, interval)
 		defer healthEngine.Stop()
-		
+
 		fmt.Printf("🔍 Health check engine started (interval: %v)\n", interval)
 	}
 
@@ -95,7 +95,7 @@ func runHealthServer(cmd *cobra.Command, args []string) error {
 		fmt.Printf("   GET  http://localhost%s/api/health/{service} - Specific service health\n", getPortFromAddress(serverAddress))
 		fmt.Printf("   POST http://localhost%s/api/check/{service}  - Trigger health check\n", getPortFromAddress(serverAddress))
 		fmt.Printf("\n💡 Press Ctrl+C to stop the server\n\n")
-		
+
 		if err := server.Start(ctx); err != nil {
 			errChan <- err
 		}
@@ -107,18 +107,18 @@ func runHealthServer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("server error: %w", err)
 	case sig := <-sigChan:
 		fmt.Printf("\n🛑 Received signal %s, shutting down gracefully...\n", sig)
-		
+
 		// Cancel context to stop all operations
 		cancel()
-		
+
 		// Give server time to shut down gracefully
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
-		
+
 		if err := server.Stop(shutdownCtx); err != nil {
 			fmt.Printf("⚠️  Error during server shutdown: %v\n", err)
 		}
-		
+
 		fmt.Println("✅ Server stopped successfully")
 		return nil
 	}
@@ -129,7 +129,7 @@ func getPortFromAddress(address string) string {
 	if address[0] == ':' {
 		return address
 	}
-	
+
 	lastColon := -1
 	for i := len(address) - 1; i >= 0; i-- {
 		if address[i] == ':' {
@@ -137,10 +137,10 @@ func getPortFromAddress(address string) string {
 			break
 		}
 	}
-	
+
 	if lastColon != -1 {
 		return address[lastColon:]
 	}
-	
+
 	return ":8080" // fallback
 }

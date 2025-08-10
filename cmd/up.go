@@ -64,13 +64,13 @@ Examples:
 
 		for serviceName, serviceConfig := range servicesToStart {
 			fmt.Printf("   Starting %s...", serviceName)
-			
+
 			if err := dockerClient.StartService(ctx, serviceName, serviceConfig); err != nil {
 				fmt.Printf(" ❌\n")
 				errors = append(errors, fmt.Sprintf("%s: %v", serviceName, err))
 				continue
 			}
-			
+
 			fmt.Printf(" ✅\n")
 		}
 

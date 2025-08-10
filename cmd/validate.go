@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/abdultolba/nizam/internal/config"
+	"github.com/spf13/cobra"
 )
 
 func NewValidateCmd() *cobra.Command {
@@ -77,11 +77,11 @@ properly formatted and contains required fields.`,
 			return nil
 		},
 	}
-	
+
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "output JSON")
 	cmd.Flags().BoolVar(&strict, "strict", false, "exit non-zero on validation failure")
 	cmd.Flags().StringVar(&file, "file", "", "config file to validate (default: .nizam.yaml)")
-	
+
 	return cmd
 }
 

@@ -83,7 +83,7 @@ ehthumbs.db
 *.bottle.tar.gz
 
 # Planning documents
-concept.md
+.docs
 
 # Generated nizam config files
 .nizam.yaml
