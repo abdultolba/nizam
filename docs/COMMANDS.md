@@ -28,17 +28,7 @@ Stop all running nizam services and clean up resources.
 ```bash
 # Stop all services
 nizam down
-
-# Stop and remove volumes
-nizam down --volumes
-
-# Force stop (kill containers)
-nizam down --force
 ```
-
-**Options:**
-- `--volumes` - Remove associated volumes
-- `--force` - Force stop containers without graceful shutdown
 
 ### `nizam status`
 Show the current status of all configured services.
@@ -46,17 +36,7 @@ Show the current status of all configured services.
 ```bash
 # Show status of all services
 nizam status
-
-# Show status with resource usage
-nizam status --verbose
-
-# JSON output
-nizam status --json
 ```
-
-**Options:**
-- `--verbose, -v` - Show detailed resource usage information
-- `--json` - Output status in JSON format
 
 ### `nizam logs`
 Display logs from running services.
@@ -70,15 +50,11 @@ nizam logs --follow postgres
 
 # Show last 100 lines
 nizam logs --tail 100 postgres
-
-# Show logs from all services
-nizam logs --all
 ```
 
 **Options:**
 - `--follow, -f` - Follow log output in real-time
-- `--tail N` - Show last N lines of logs
-- `--all` - Show logs from all services
+- `--tail N` - Show last N lines of logs (default: 50)
 
 ### `nizam exec`
 Execute commands inside running service containers.
@@ -89,15 +65,7 @@ nizam exec postgres bash
 
 # Run single command
 nizam exec postgres psql -U user -d myapp
-
-# Execute as specific user
-nizam exec --user root postgres apt-get update
 ```
-
-**Options:**
-- `--user USER` - Execute command as specified user
-- `--interactive, -i` - Keep STDIN open
-- `--tty, -t` - Allocate pseudo-TTY
 
 ## Configuration Management
 
@@ -108,16 +76,12 @@ Initialize a new nizam configuration file in the current directory.
 # Create default configuration
 nizam init
 
-# Initialize with specific profile
-nizam init --profile production
-
-# Overwrite existing configuration
-nizam init --force
+# Initialize with custom services
+nizam init --add postgres,mysql,redis
 ```
 
 **Options:**
-- `--profile PROFILE` - Set initial profile (default: dev)
-- `--force, -f` - Overwrite existing configuration file
+- `--add SERVICES` - Comma-separated list of services to add instead of defaults
 
 ### `nizam validate`
 Validate configuration file syntax and structure.
@@ -168,18 +132,20 @@ nizam lint --json
 Add a service from a template to your configuration.
 
 ```bash
-# Add a service interactively
-nizam add
-
-# Add specific service template
+# Add service with interactive configuration
 nizam add postgres
 
-# List available templates
-nizam add --list
+# Add service with default values
+nizam add postgres --defaults
+
+# Add service with custom name
+nizam add redis --name cache
 ```
 
 **Options:**
-- `--list, -l` - Show available service templates
+- `--defaults` - Skip interactive prompts and use default values
+- `--name NAME` - Custom name for the service (default: template name)
+- `--overwrite` - Overwrite existing service with the same name
 
 ### `nizam remove`
 Remove services from your configuration.
