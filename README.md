@@ -1,12 +1,13 @@
-# nizam 🛠️
-
-> Local Structured Service Manager for Dev Environments
-
-**nizam** is a powerful CLI tool to manage, monitor, and interact with local development services (Postgres, Redis, Meilisearch, etc.) using Docker. It helps you spin up, shut down, and interact with common services without manually writing `docker run` or service-specific commands.
+<!-- # nizam 🛠️ -->
+<p align="center">
+  <img src="https://res.cloudinary.com/friendly-social/image/upload/v1754795243/nizam_logo_bff9rc.png" alt="Nizam Logo" width="200" style="margin-bottom:-25px;"><br>
+  <b>nizam</b> is a powerful CLI tool to manage, monitor, and interact with local development services (Postgres, Redis, Meilisearch, etc.) using Docker. It helps you spin up, shut down, and interact with common services without manually writing `docker run` or service-specific commands.
+</p>
 
 ## Features
 
 ### Core Service Management
+
 - 🚀 **One-command service management**: `nizam up postgres redis`
 - 🎛️ **Interactive template configuration**: Customize ports, credentials, and settings
 - 📊 **Service monitoring**: `nizam status` shows health of all services
@@ -15,6 +16,7 @@
 - 🐳 **Docker-native**: Uses Docker containers with sensible defaults
 
 ### Development & Operations Tools
+
 - 🩺 **Environment Doctor**: Comprehensive preflight checks with `nizam doctor`
 - 🔍 **Configuration Linting**: Best practices validation with `nizam lint`
 - ✅ **Config Validation**: Syntax and structure validation with `nizam validate`
@@ -22,11 +24,6 @@
 - 🕒 **Service Readiness**: Wait for services with `nizam wait-for`
 - 🔄 **Self-Update**: Automatic updates from GitHub releases
 - 🧩 **Shell Completion**: Multi-shell completion support
-
-### Interactive Interfaces  
-- 🖥️ **Interactive TUI**: Full-featured terminal interface for visual service management
-- 🏥 **Advanced Health Checks**: Built-in health monitoring with HTTP server and web dashboard
-- ⚙️ **Profile support**: Multiple configurations for `dev`, `test`, `ci`
 
 ## Quick Start
 
@@ -63,166 +60,6 @@ nizam exec mysql mysql -u user -p
 # Stop all services
 nizam down
 ```
-
-## Interactive TUI (Terminal User Interface)
-
-nizam includes a beautiful, cyberpunk-themed terminal interface for visual service management. The TUI provides an immersive experience with real-time monitoring and full operational capabilities.
-
-### Launching the TUI
-
-```bash
-# Launch the enhanced TUI (default - with real Docker operations)
-nizam tui
-
-# Launch demo mode (for exploration without Docker operations)
-nizam tui --demo
-
-# Enable debug mode
-nizam tui --debug
-```
-
-### TUI Features
-
-🎨 **Tron-Inspired Design**
-- Cyberpunk aesthetic with cyan, blue, purple, and pink accents
-- Animated status indicators and smooth transitions
-- ASCII art logo and professional layout
-
-⚡ **Real Docker Operations**
-- Start, stop, restart services directly from the interface
-- Add new services from templates with interactive prompts
-- Remove services with safety confirmations
-- Live monitoring with auto-refresh every 30 seconds
-- Viewport scrolling controls (Ctrl+U/D/B/F) for all views
-- Config view caching for stable display (5-second intervals)
-
-🖥️ **Multiple Views**
-- **Dashboard (1)**: Service overview with quick actions
-- **Services (2)**: Detailed service management table
-- **Logs (3)**: Real-time log streaming and filtering
-- **Templates (4)**: Browse and add services from templates
-- **Config (5)**: Live configuration viewing and management
-
-### Navigation & Controls
-
-#### Global Navigation
-```
-1-5            Switch between views
-Tab/Shift+Tab  Navigate panels/buttons
-h or ?         Toggle help screen
-r              Refresh services (live data)
-q or Ctrl+C    Quit application
-/              Search services/templates
-Esc            Clear search or go back
-
-# Viewport Scrolling (works in all views)
-Ctrl+U         Scroll up (5 lines)
-Ctrl+D         Scroll down (5 lines)
-Ctrl+B         Page up (full screen)
-Ctrl+F         Page down (full screen)
-```
-
-#### Dashboard View
-```
-Tab/Shift+Tab  Navigate between quick action buttons
-Enter/Space    Execute selected quick action:
-               • Start All Services
-               • Stop All Services  
-               • Refresh Data
-               • Add New Service (goes to Templates)
-
-# Viewport Controls
-Ctrl+U/D       Scroll service list up/down
-Ctrl+B/F       Page up/down in service list
-```
-
-#### Services View
-```
-↑/↓ or j/k     Navigate service list
-s              Start selected service
-x              Stop selected service
-R              Restart selected service
-d or Delete    Remove selected service (with confirmation)
-Enter          View logs for selected service
-
-# Viewport Controls
-Ctrl+U/D       Scroll service list up/down
-Ctrl+B/F       Page up/down in service list
-```
-
-#### Logs View
-```
-↑/↓ or j/k     Select service for log viewing
-Enter          Start/stop real-time log streaming
-c              Clear current logs
-f              Filter logs (search within log content)
-
-# Viewport Controls  
-Ctrl+U/D       Scroll log content up/down
-Ctrl+B/F       Page up/down in log content
-```
-
-#### Templates View
-```
-↑/↓ or j/k     Navigate template list
-Enter or a     Add service from selected template
-               (opens interactive prompt for service name)
-
-# Viewport Controls
-Ctrl+U/D       Scroll template list up/down
-Ctrl+B/F       Page up/down in template list
-```
-
-### TUI Screenshots
-
-The TUI features a distinctive Tron-themed interface:
-
-```
-███╗   ██╗██╗███████╗ █████╗ ███╗   ███╗
-████╗  ██║██║╚══███╔╝██╔══██╗████╗ ████║
-██╔██╗ ██║██║  ███╔╝ ███████║██╔████╔██║
-██║╚██╗██║██║ ███╔╝  ██╔══██║██║╚██╔╝██║
-██║ ╚████║██║███████╗██║  ██║██║ ╚═╝ ██║
-╚═╝  ╚═══╝╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝
-
-Enhanced Service Manager - Full Docker Operations
-
-┌─ Dashboard (1) ─┬─ Services (2) ─┬─ Logs (3) ─┬─ Templates (4) ─┬─ Config (5) ─┐
-```
-
-### Safety Features
-
-The TUI includes built-in safety mechanisms:
-
-- **Confirmation Dialogs**: All destructive operations require confirmation
-- **Input Validation**: Service names and parameters are validated in real-time
-- **Error Handling**: Clear error messages with helpful suggestions
-- **Graceful Fallback**: Demo mode available if Docker is unavailable
-
-### TUI vs CLI
-
-| Feature | CLI Commands | Enhanced TUI |
-|---------|-------------|--------------|
-| **Service Operations** | `nizam up/down/restart` | ✅ Direct interface operations |
-| **Real-time Monitoring** | `nizam status` (snapshot) | ✅ Live updates every 30s |
-| **Log Viewing** | `nizam logs <service>` | ✅ Interactive log streaming |
-| **Service Creation** | `nizam add <template>` | ✅ Visual template browser |
-| **Configuration** | Edit `.nizam.yaml` | ✅ Live config viewing |
-| **Batch Operations** | Multiple commands | ✅ Single interface |
-| **Learning Curve** | Command memorization | ✅ Visual guidance |
-
-**When to use TUI:**
-- 🎮 Prefer visual interface over command line
-- 🔄 Need real-time monitoring
-- 🚀 Want one-stop service management
-- 📚 Learning nizam features
-- 🎯 Managing multiple services frequently
-
-**When to use CLI:**
-- 🤖 Scripting and automation
-- 🚀 Single, quick operations
-- 📱 Working in constrained terminals
-- 🔧 Integration with other tools
 
 ## Installation
 
@@ -465,11 +302,12 @@ nizam health --watch --interval 5  # Custom watch interval
 
 # Available flags
 -o, --output string   Output format (table, json, compact)
--w, --watch           Watch health status continuously  
+-w, --watch           Watch health status continuously
     --interval int    Watch interval in seconds (default 10)
 ```
 
 **Output Formats:**
+
 - **table**: Formatted table with service details, status, and timestamps
 - **json**: Complete health data in JSON format for automation
 - **compact**: Minimal status display with emoji indicators
@@ -511,6 +349,7 @@ GET /api/services
 ```
 
 **Example API Response:**
+
 ```json
 {
   "service": "postgres",
@@ -565,12 +404,14 @@ services:
 **Health Check Types:**
 
 1. **Command Checks**: Execute commands inside containers
+
    ```yaml
    test: ["CMD", "pg_isready", "-U", "user"]
    test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
    ```
 
 2. **HTTP Checks**: Automatically detected from curl/wget commands
+
    ```yaml
    test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
    ```
@@ -581,13 +422,13 @@ services:
 
 Common service templates include pre-configured health checks:
 
-| Service | Health Check | Command |
-|---------|-------------|----------|
-| **PostgreSQL** | `pg_isready` | Database connection test |
-| **MySQL** | `mysqladmin ping` | Database ping test |
-| **Redis** | `redis-cli ping` | Redis ping command |
-| **MongoDB** | `mongosh --eval` | Database status check |
-| **Elasticsearch** | HTTP health API | `GET /_health` endpoint |
+| Service           | Health Check      | Command                  |
+| ----------------- | ----------------- | ------------------------ |
+| **PostgreSQL**    | `pg_isready`      | Database connection test |
+| **MySQL**         | `mysqladmin ping` | Database ping test       |
+| **Redis**         | `redis-cli ping`  | Redis ping command       |
+| **MongoDB**       | `mongosh --eval`  | Database status check    |
+| **Elasticsearch** | HTTP health API   | `GET /_health` endpoint  |
 
 ### Health Status Types
 
@@ -597,18 +438,10 @@ Common service templates include pre-configured health checks:
 - ⚫ **not_running**: Docker container is not running
 - 🟣 **unknown**: Health check status could not be determined
 
-### Integration with TUI
-
-The health check system integrates with the TUI for visual monitoring:
-
-- Health status indicators in service listings
-- Real-time health updates in dashboard view
-- Health check history in service details
-- Manual health check triggers from interface
-
 ### Use Cases
 
 **Development Workflow:**
+
 ```bash
 # Start services
 nizam up postgres redis
@@ -624,6 +457,7 @@ nizam health-server --address :8080
 ```
 
 **CI/CD Integration:**
+
 ```bash
 # Wait for services to be healthy
 nizam health --output json | jq '.status == "healthy"'
@@ -634,6 +468,7 @@ curl http://localhost:8080/api/health
 ```
 
 **Team Monitoring:**
+
 ```bash
 # Shared health dashboard
 nizam health-server --address :3030
@@ -653,7 +488,7 @@ Comprehensive preflight environment checks to ensure your Docker setup is ready 
 # Run all environment checks
 nizam doctor
 
-# Skip specific checks  
+# Skip specific checks
 nizam doctor --skip net.mtu,disk.free
 
 # JSON output for CI/CD integration
@@ -667,6 +502,7 @@ nizam doctor --verbose
 ```
 
 **Checks Performed:**
+
 - 🐳 **Docker connectivity** - Verify Docker daemon is running
 - 🔧 **Docker Compose** - Ensure compose plugin is available
 - 💾 **Disk space** - Check available storage (warns if <1GB)
@@ -674,6 +510,7 @@ nizam doctor --verbose
 - 🚪 **Port conflicts** - Dynamic port availability for all configured services
 
 **Sample Output:**
+
 ```
 ✔ docker.daemon       Docker daemon responding
 ✔ docker.compose      Docker Compose plugin available
@@ -703,6 +540,7 @@ nizam validate --strict
 ```
 
 **Validation Features:**
+
 - ✅ YAML syntax validation
 - 🔍 Service structure verification
 - 📋 Required field checking
@@ -725,11 +563,13 @@ nizam lint --json
 ```
 
 **Linting Rules:**
+
 - 🚫 **no-latest**: Prevents `:latest` image tags (reproducibility)
 - 🔌 **ports-shape**: Validates port mapping format
 - ⚡ **limits**: Recommends resource limits for consistency
 
 **Sample Output:**
+
 ```
 ✖ services.web.image: image tag missing or ':latest' not allowed (no-latest)
   Fix: pin to a specific tag, e.g. 'nginx:1.21'
@@ -757,6 +597,7 @@ nizam wait-for --timeout 60s --interval 2s database
 ```
 
 **Readiness Checks:**
+
 - 🔌 **Port connectivity** - TCP connection tests
 - 🌐 **HTTP health checks** - Endpoint availability
 - 🐳 **Container status** - Docker container state
@@ -778,6 +619,7 @@ nizam retry start web database --attempts 3
 ```
 
 **Supported Operations:**
+
 - 🚀 `start` - Start services with retry
 - ⏹️ `stop` - Stop services with retry
 - 🔄 `restart` - Restart services with retry
@@ -785,6 +627,7 @@ nizam retry start web database --attempts 3
 - 🏗️ `build` - Build images with retry
 
 **Retry Features:**
+
 - 📈 Exponential backoff (1s → 2s → 4s → 8s)
 - 🎯 Configurable attempts and delays
 - 📊 Progress reporting with attempt counters
@@ -806,6 +649,7 @@ nizam update --prerelease
 ```
 
 **Update Features:**
+
 - 🔍 GitHub releases integration
 - 🖥️ Platform-specific binary detection
 - 🔄 Safe binary replacement with rollback
@@ -823,7 +667,7 @@ source <(nizam completion bash)
 # Zsh completion
 source <(nizam completion zsh)
 
-# Fish completion  
+# Fish completion
 nizam completion fish | source
 
 # PowerShell completion
@@ -831,6 +675,7 @@ nizam completion powershell | Out-String | Invoke-Expression
 ```
 
 **Installation Examples:**
+
 ```bash
 # Bash (add to ~/.bashrc)
 echo 'source <(nizam completion bash)' >> ~/.bashrc
@@ -842,6 +687,7 @@ echo 'source <(nizam completion zsh)' >> ~/.zshrc
 ### Development Workflow Integration
 
 **Pre-commit Checks:**
+
 ```bash
 #!/bin/bash
 # .git/hooks/pre-commit
@@ -849,6 +695,7 @@ nizam validate --strict && nizam lint && nizam doctor --json
 ```
 
 **CI/CD Pipeline:**
+
 ```yaml
 # .github/workflows/validate.yml
 - name: Validate nizam configuration
@@ -859,6 +706,7 @@ nizam validate --strict && nizam lint && nizam doctor --json
 ```
 
 **Development Environment Setup:**
+
 ```bash
 # Reliable environment startup
 nizam doctor                    # Check environment
@@ -868,6 +716,7 @@ nizam wait-for --timeout 60s    # Wait for readiness
 ```
 
 **Production Deployment:**
+
 ```bash
 # Production-ready checks
 nizam lint --json > lint-report.json
@@ -880,6 +729,7 @@ nizam doctor --fix
 🚧 **This project is in active development**
 
 ### Core Infrastructure ✅
+
 - [x] Project structure and modern Go standards
 - [x] Core CLI commands (`init`, `up`, `down`, `status`, `logs`, `exec`, `add`, `remove`)
 - [x] Docker integration with Compose support
@@ -887,12 +737,14 @@ nizam doctor --fix
 - [x] Service definition system
 
 ### Service Management ✅
+
 - [x] Service templates (16+ built-in templates)
 - [x] Interactive template variables (postgres, mysql, redis, mongodb, rabbitmq)
 - [x] Custom user templates (export, import, manage)
 - [x] Log streaming and real-time monitoring
 
 ### Health & Monitoring ✅
+
 - [x] **Advanced Health Check System**: Comprehensive health monitoring with multiple interfaces
   - [x] Health check engine with command, HTTP, and Docker status checks
   - [x] CLI health commands (`nizam health`, `nizam health-server`)
@@ -903,6 +755,7 @@ nizam doctor --fix
   - [x] Docker native healthcheck integration during container creation
 
 ### Development & Operations Tools ✅
+
 - [x] **Environment Doctor** (`nizam doctor`): Comprehensive preflight checks
   - [x] Docker daemon and Compose plugin verification
   - [x] System resource checks (disk space, network MTU)
@@ -933,20 +786,8 @@ nizam doctor --fix
   - [x] Bash, Zsh, Fish, and PowerShell support
   - [x] Dynamic command and flag completion
 
-### Interactive Interfaces ✅
-- [x] **Interactive TUI**: Full-featured terminal interface with real Docker operations
-  - [x] Tron-themed cyberpunk design with animated status indicators
-  - [x] Live service monitoring with auto-refresh
-  - [x] Direct service operations (start, stop, restart, remove)
-  - [x] Interactive service creation from templates
-  - [x] Real-time log streaming and filtering
-  - [x] Safety confirmations and input validation
-  - [x] Search and filtering capabilities
-  - [x] Demo mode for exploration without Docker
-  - [x] Viewport scrolling controls (Ctrl+U/D/B/F) for all views
-  - [x] Config view caching to prevent rapid refreshing (5-second intervals)
-
 ### Documentation & Examples ✅
+
 - [x] Comprehensive README with feature documentation
 - [x] CLI commands documentation (`docs/COMMANDS.md`)
 - [x] Module-specific documentation (`internal/doctor/README.md`, `internal/lint/README.md`)
@@ -954,6 +795,7 @@ nizam doctor --fix
 - [x] Usage examples and integration patterns
 
 ### Planned Features 🔄
+
 - [ ] **Profile Management**: Multi-environment configuration support
 - [ ] **Network Management**: Custom Docker network creation and management
 - [ ] **Plugin System**: Extensible architecture for third-party integrations
