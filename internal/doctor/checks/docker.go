@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/abdultolba/nizam/internal/doctor"
+	"github.com/docker/docker/client"
 )
 
 type DockerDaemon struct{}
@@ -23,7 +23,7 @@ func (c DockerDaemon) Run(ctx context.Context) (doctor.Result, error) {
 		return doctor.Result{ID: c.ID(), Status: doctor.Fail, Severity: "required", Message: "cannot init docker client"}, nil
 	}
 	defer cli.Close()
-	
+
 	if _, err := cli.Ping(ctx); err != nil {
 		return doctor.Result{ID: c.ID(), Status: doctor.Fail, Severity: "required", Message: "docker daemon unreachable. Start Docker Desktop or dockerd"}, nil
 	}
@@ -50,7 +50,7 @@ func (c ComposePlugin) Run(ctx context.Context) (doctor.Result, error) {
 		return doctor.Result{
 			ID: c.ID(), Status: doctor.Fail, Severity: "required",
 			Message: "docker compose plugin not found",
-			Hints: []string{"Install Docker Compose v2 plugin (bundled with Docker Desktop)"},
+			Hints:   []string{"Install Docker Compose v2 plugin (bundled with Docker Desktop)"},
 		}, nil
 	}
 	ver := strings.TrimSpace(string(out))

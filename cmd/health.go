@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	healthOutputFormat string
-	healthWatchMode    bool
+	healthOutputFormat  string
+	healthWatchMode     bool
 	healthWatchInterval int
 )
 
@@ -38,7 +38,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(healthCmd)
-	
+
 	// Add flags
 	healthCmd.Flags().StringVarP(&healthOutputFormat, "output", "o", "table", "Output format (table, json, compact)")
 	healthCmd.Flags().BoolVarP(&healthWatchMode, "watch", "w", false, "Watch health status continuously")
@@ -117,7 +117,7 @@ func checkHealthOnce(ctx context.Context, engine *healthcheck.Engine, args []str
 
 func watchHealthStatus(ctx context.Context, engine *healthcheck.Engine, args []string) error {
 	interval := time.Duration(healthWatchInterval) * time.Second
-	
+
 	// Start the health check engine
 	engine.Start(ctx, interval)
 	defer engine.Stop()
@@ -139,7 +139,7 @@ func watchHealthStatus(ctx context.Context, engine *healthcheck.Engine, args []s
 			// Clear screen and show updated status
 			fmt.Print("\033[2J\033[H") // Clear screen and move cursor to top
 			fmt.Printf("🔍 Health Status - %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
-			
+
 			if err := displayCurrentHealth(ctx, engine, args); err != nil {
 				return err
 			}
@@ -166,7 +166,7 @@ func displayCurrentHealth(ctx context.Context, engine *healthcheck.Engine, args 
 	// Display all services
 	allHealth := engine.GetAllServicesHealth()
 	outputAllHealth(allHealth)
-	
+
 	// Show summary
 	summary := engine.GetHealthSummary()
 	fmt.Printf("\nSummary: %d total, %d healthy, %d unhealthy, %d not running, %d unknown\n",
@@ -181,18 +181,18 @@ func displayCurrentHealth(ctx context.Context, engine *healthcheck.Engine, args 
 
 func outputHealthResult(result *healthcheck.HealthCheckResult) {
 	statusColor := getStatusColor(result.Status)
-	
+
 	fmt.Printf("Service: %s\n", result.ServiceName)
 	fmt.Printf("Status:  %s%s%s\n", statusColor, result.Status, "\033[0m")
 	fmt.Printf("Message: %s\n", result.Message)
 	fmt.Printf("Type:    %s\n", result.CheckType)
 	fmt.Printf("Duration: %v\n", result.Duration)
 	fmt.Printf("Time:    %s\n", result.Timestamp.Format("2006-01-02 15:04:05"))
-	
+
 	if result.Error != nil {
 		fmt.Printf("Error:   %v\n", result.Error)
 	}
-	
+
 	if result.Details != nil {
 		fmt.Printf("Details:\n")
 		detailsJSON, _ := json.MarshalIndent(result.Details, "  ", "  ")
@@ -205,28 +205,28 @@ func outputHealthResultJSON(result *healthcheck.HealthCheckResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal health result: %w", err)
 	}
-	
+
 	fmt.Println(string(jsonData))
 	return nil
 }
 
 func outputHealthInfo(serviceName string, healthInfo *healthcheck.ServiceHealthInfo) {
 	statusColor := getStatusColor(healthInfo.Status)
-	
+
 	fmt.Printf("Service: %s\n", serviceName)
 	fmt.Printf("Status:  %s%s%s\n", statusColor, healthInfo.Status, "\033[0m")
 	fmt.Printf("Running: %t\n", healthInfo.IsRunning)
-	
+
 	if healthInfo.ContainerName != "" {
 		fmt.Printf("Container: %s\n", healthInfo.ContainerName)
 	}
-	
+
 	if healthInfo.Image != "" {
 		fmt.Printf("Image: %s\n", healthInfo.Image)
 	}
-	
+
 	fmt.Printf("Last Check: %s\n", healthInfo.LastCheck.Format("2006-01-02 15:04:05"))
-	
+
 	if len(healthInfo.CheckHistory) > 0 {
 		fmt.Printf("\nRecent Checks:\n")
 		for i, check := range healthInfo.CheckHistory {
@@ -242,7 +242,7 @@ func outputHealthInfo(serviceName string, healthInfo *healthcheck.ServiceHealthI
 				check.Duration)
 		}
 	}
-	
+
 	fmt.Println()
 }
 
@@ -261,19 +261,19 @@ func outputAllHealth(allHealth map[string]*healthcheck.ServiceHealthInfo) {
 		if healthInfo.IsRunning {
 			running = "Yes"
 		}
-		
+
 		container := healthInfo.ContainerName
 		if container == "" {
 			container = "-"
 		}
-		
+
 		image := healthInfo.Image
 		if image == "" {
 			image = "-"
 		} else if len(image) > 30 {
 			image = image[:27] + "..."
 		}
-		
+
 		lastCheck := healthInfo.LastCheck.Format("15:04:05")
 		if healthInfo.LastCheck.IsZero() {
 			lastCheck = "-"
@@ -306,7 +306,7 @@ func outputAllHealthCompact(allHealth map[string]*healthcheck.ServiceHealthInfo)
 		if healthInfo.IsRunning {
 			runningStatus = "🟢"
 		}
-		
+
 		fmt.Printf("%s %s%8s%s %s\n",
 			runningStatus,
 			statusColor,
@@ -321,7 +321,7 @@ func outputAllHealthJSON(allHealth map[string]*healthcheck.ServiceHealthInfo) er
 	if err != nil {
 		return fmt.Errorf("failed to marshal health data: %w", err)
 	}
-	
+
 	fmt.Println(string(jsonData))
 	return nil
 }
@@ -340,4 +340,3 @@ func getStatusColor(status healthcheck.HealthStatus) string {
 		return "\033[35m" // Magenta
 	}
 }
-

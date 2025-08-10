@@ -13,6 +13,7 @@ Welcome to the comprehensive documentation for nizam, the Local Structured Servi
 - **[CLI Commands Documentation](COMMANDS.md)** - Complete reference for all nizam commands
   - Core operations (`up`, `down`, `status`, `logs`, `exec`)
   - Configuration management (`init`, `validate`, `lint`, `add`, `remove`)
+  - Data lifecycle management (`snapshot`, `psql`, `redis-cli`)
   - Health & monitoring (`doctor`, `health`, `health-server`)
   - Development tools (`wait-for`, `retry`, `completion`, `update`)
 
@@ -20,6 +21,7 @@ Welcome to the comprehensive documentation for nizam, the Local Structured Servi
 - **[Interactive TUI Guide](../README.md#interactive-tui-terminal-user-interface)** - Terminal User Interface usage
 - **[Health Check System](../README.md#health-check-system-)** - Health monitoring and dashboard
 - **[Service Templates](../README.md#service-templates)** - Using and managing service templates
+- **[Data Lifecycle Management](DATA_LIFECYCLE.md)** - Database snapshots and one-liner access tools
 
 ### Technical Documentation
 
@@ -74,6 +76,12 @@ Welcome to the comprehensive documentation for nizam, the Local Structured Servi
 - **Self-Update** - Automatic updates from GitHub releases
 - **Shell Completion** - Multi-shell completion support
 
+### Data Lifecycle Management
+- **Database Snapshots** - Point-in-time backup and restore for PostgreSQL and Redis
+- **One-liner Database Access** - Smart CLI tools with auto-resolved connections
+- **Compression & Integrity** - zstd/gzip compression with SHA256 verification
+- **Atomic Operations** - Safe creation and restoration with temporary files
+
 ### Advanced Features
 - **Interactive TUI** - Full-featured terminal interface with real-time monitoring
 - **Custom Templates** - Create and share your own service templates
@@ -86,17 +94,23 @@ Welcome to the comprehensive documentation for nizam, the Local Structured Servi
 nizam/
 ├── cmd/                    # CLI commands implementation
 ├── internal/
+│   ├── compress/          # Compression utilities (zstd, gzip)
 │   ├── config/            # Configuration parsing and validation
+│   ├── docker/            # Docker client wrapper
+│   ├── dockerx/           # Lightweight Docker execution
 │   ├── doctor/            # Environment checking system
 │   │   ├── README.md      # Doctor module documentation
 │   │   └── checks/        # Individual check implementations
 │   ├── lint/              # Configuration linting system
 │   │   └── README.md      # Lint module documentation
-│   ├── operations/        # Docker operations wrapper
+│   ├── paths/             # Storage path management
+│   ├── resolve/           # Service resolution and detection
+│   ├── snapshot/          # Database snapshot engines
 │   └── version/           # Version management
 ├── docs/
 │   ├── README.md          # This documentation index
 │   ├── COMMANDS.md        # Complete CLI reference
+│   ├── DATA_LIFECYCLE.md  # Database snapshots & one-liners
 │   └── DOCTOR.md          # Doctor features documentation
 └── README.md              # Main project documentation
 ```

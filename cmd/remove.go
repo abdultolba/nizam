@@ -67,11 +67,11 @@ Examples:
 		if !removeForce {
 			fmt.Printf("⚠️  This will remove the following services from your configuration: %s\n", strings.Join(servicesToRemove, ", "))
 			fmt.Print("Do you want to continue? (y/N): ")
-			
+
 			var response string
 			fmt.Scanln(&response)
 			response = strings.ToLower(strings.TrimSpace(response))
-			
+
 			if response != "y" && response != "yes" {
 				fmt.Println("❌ Operation cancelled")
 				return nil

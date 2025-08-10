@@ -94,7 +94,7 @@ Examples:
 
 		fmt.Printf("\n✅ %s service '%s' from template '%s'\n", action, targetServiceName, templateName)
 		fmt.Printf("📝 Configuration saved to %s\n", config.GetConfigPath())
-		
+
 		// Show processed service details
 		fmt.Printf("\n📋 Service Details:\n")
 		fmt.Printf("   Image: %s\n", processedService.Image)
@@ -128,7 +128,7 @@ Examples:
 
 func saveConfig(cfg *config.Config) error {
 	configPath := config.GetConfigPath()
-	
+
 	yamlData, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal configuration: %w", err)

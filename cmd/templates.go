@@ -38,7 +38,7 @@ Use --show-tags to see all available tags.`,
 
 func listAllTemplates() error {
 	allTemplates := templates.GetAllTemplates()
-	
+
 	if len(allTemplates) == 0 {
 		fmt.Println("No templates available.")
 		return nil
@@ -52,11 +52,11 @@ func listAllTemplates() error {
 
 	for _, name := range templateNames {
 		template := allTemplates[name]
-		
+
 		// Format tags, highlighting custom templates
 		tagStr := ""
 		isCustom := contains(template.Tags, "custom")
-		
+
 		if len(template.Tags) > 0 {
 			// Filter out "custom" tag for display
 			displayTags := make([]string, 0, len(template.Tags))
@@ -69,7 +69,7 @@ func listAllTemplates() error {
 				tagStr = fmt.Sprintf(" [%s]", strings.Join(displayTags, ", "))
 			}
 		}
-		
+
 		// Add custom indicator
 		customIndicator := ""
 		if isCustom {
@@ -88,7 +88,7 @@ func listAllTemplates() error {
 
 func listTemplatesByTag(tag string) error {
 	filteredTemplates := templates.GetAllTemplatesByTag(tag)
-	
+
 	if len(filteredTemplates) == 0 {
 		fmt.Printf("No templates found with tag '%s'\n", tag)
 		fmt.Println("\n💡 Use 'nizam templates --show-tags' to see all available tags")
@@ -110,7 +110,7 @@ func listTemplatesByTag(tag string) error {
 				otherTags = append(otherTags, t)
 			}
 		}
-		
+
 		tagStr := ""
 		if len(otherTags) > 0 {
 			tagStr = fmt.Sprintf(" [%s]", strings.Join(otherTags, ", "))

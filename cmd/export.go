@@ -88,7 +88,7 @@ Examples:
 
 		fmt.Printf("✅ Exported service '%s' as template '%s'\n", serviceName, name)
 		fmt.Printf("📝 Template saved to %s/%s.yaml\n", templates.GetCustomTemplatesDir(), name)
-		
+
 		// Show template details
 		fmt.Printf("\n📋 Template Details:\n")
 		fmt.Printf("   Name: %s\n", template.Name)

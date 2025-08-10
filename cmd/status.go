@@ -41,7 +41,7 @@ var statusCmd = &cobra.Command{
 
 		// Print table header
 		fmt.Printf("%-15s %-12s %-20s %-20s %s\n", "SERVICE", "STATUS", "CONTAINER ID", "PORTS", "IMAGE")
-		fmt.Printf("%-15s %-12s %-20s %-20s %s\n", 
+		fmt.Printf("%-15s %-12s %-20s %-20s %s\n",
 			strings.Repeat("-", 15),
 			strings.Repeat("-", 12),
 			strings.Repeat("-", 20),
@@ -79,7 +79,7 @@ var statusCmd = &cobra.Command{
 
 func getStatusEmoji(status string) string {
 	statusLower := strings.ToLower(status)
-	
+
 	if strings.Contains(statusLower, "up") {
 		return "🟢"
 	} else if strings.Contains(statusLower, "exited") {
@@ -89,7 +89,7 @@ func getStatusEmoji(status string) string {
 	} else if strings.Contains(statusLower, "restarting") {
 		return "🟠"
 	}
-	
+
 	return "⚪"
 }
 

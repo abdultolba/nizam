@@ -14,9 +14,9 @@ import (
 
 // Server provides HTTP endpoints for health check information
 type Server struct {
-	engine   *Engine
-	server   *http.Server
-	address  string
+	engine  *Engine
+	server  *http.Server
+	address string
 }
 
 // NewServer creates a new health check HTTP server
@@ -34,20 +34,20 @@ func NewServer(engine *Engine, address string) *Server {
 // Start starts the HTTP server
 func (s *Server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
-	
+
 	// API endpoints
 	mux.HandleFunc("/api/health", s.handleHealthSummary)
 	mux.HandleFunc("/api/health/", s.handleServiceHealth) // matches /api/health/{service}
 	mux.HandleFunc("/api/services", s.handleAllServicesHealth)
 	mux.HandleFunc("/api/check/", s.handleCheckServiceNow) // matches /api/check/{service}
-	
+
 	// Web UI endpoints
 	mux.HandleFunc("/", s.handleWebDashboard)
 	mux.HandleFunc("/service/", s.handleServiceDetails) // matches /service/{service}
-	
+
 	// Static assets
 	mux.HandleFunc("/assets/", s.handleStaticAssets)
-	
+
 	s.server = &http.Server{
 		Addr:    s.address,
 		Handler: s.corsMiddleware(s.loggingMiddleware(mux)),
@@ -86,7 +86,7 @@ func (s *Server) handleHealthSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	summary := s.engine.GetHealthSummary()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(summary); err != nil {
 		log.Error().Err(err).Msg("Failed to encode health summary")
@@ -128,7 +128,7 @@ func (s *Server) handleAllServicesHealth(w http.ResponseWriter, r *http.Request)
 	}
 
 	allHealth := s.engine.GetAllServicesHealth()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(allHealth); err != nil {
 		log.Error().Err(err).Msg("Failed to encode all services health")
@@ -183,9 +183,9 @@ func (s *Server) handleWebDashboard(w http.ResponseWriter, r *http.Request) {
 	allHealth := s.engine.GetAllServicesHealth()
 
 	data := struct {
-		Summary    map[string]interface{}
-		Services   map[string]*ServiceHealthInfo
-		Timestamp  string
+		Summary   map[string]interface{}
+		Services  map[string]*ServiceHealthInfo
+		Timestamp string
 	}{
 		Summary:   summary,
 		Services:  allHealth,
@@ -196,7 +196,7 @@ func (s *Server) handleWebDashboard(w http.ResponseWriter, r *http.Request) {
 		"GetHealthStatusColor": GetHealthStatusColor,
 		"FormatDuration":       FormatDuration,
 	}).Parse(dashboardTemplate))
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.Execute(w, data); err != nil {
 		log.Error().Err(err).Msg("Failed to render dashboard template")
@@ -235,7 +235,7 @@ func (s *Server) handleServiceDetails(w http.ResponseWriter, r *http.Request) {
 		"GetHealthStatusColor": GetHealthStatusColor,
 		"FormatDuration":       FormatDuration,
 	}).Parse(serviceDetailsTemplate))
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.Execute(w, data); err != nil {
 		log.Error().Err(err).Str("service", serviceName).Msg("Failed to render service details template")
@@ -246,7 +246,7 @@ func (s *Server) handleServiceDetails(w http.ResponseWriter, r *http.Request) {
 // handleStaticAssets serves static CSS/JS assets
 func (s *Server) handleStaticAssets(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/assets/")
-	
+
 	switch path {
 	case "style.css":
 		w.Header().Set("Content-Type", "text/css")
@@ -265,12 +265,12 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		
+
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -310,19 +310,19 @@ func FormatDuration(d time.Duration) string {
 	if d == 0 {
 		return "0s"
 	}
-	
+
 	if d < time.Second {
 		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
-	
+
 	if d < time.Minute {
 		return fmt.Sprintf("%.1fs", d.Seconds())
 	}
-	
+
 	if d < time.Hour {
 		return fmt.Sprintf("%.1fm", d.Minutes())
 	}
-	
+
 	return fmt.Sprintf("%.1fh", d.Hours())
 }
 

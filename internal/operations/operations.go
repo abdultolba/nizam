@@ -12,7 +12,7 @@ func Start(serviceNames []string) error {
 	if len(serviceNames) > 0 {
 		args = append(args, serviceNames...)
 	}
-	
+
 	cmd := exec.Command("docker", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -27,7 +27,7 @@ func Stop(serviceNames []string) error {
 	if len(serviceNames) > 0 {
 		args = append(args, serviceNames...)
 	}
-	
+
 	cmd := exec.Command("docker", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -42,7 +42,7 @@ func Restart(serviceNames []string) error {
 	if len(serviceNames) > 0 {
 		args = append(args, serviceNames...)
 	}
-	
+
 	cmd := exec.Command("docker", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -57,7 +57,7 @@ func Pull(serviceNames []string) error {
 	if len(serviceNames) > 0 {
 		args = append(args, serviceNames...)
 	}
-	
+
 	cmd := exec.Command("docker", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -72,7 +72,7 @@ func Build(serviceNames []string) error {
 	if len(serviceNames) > 0 {
 		args = append(args, serviceNames...)
 	}
-	
+
 	cmd := exec.Command("docker", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -88,7 +88,7 @@ func GetServiceStatus() (map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("docker compose ps failed: %w\nOutput: %s", err, output)
 	}
-	
+
 	// Simple parsing - for a more robust implementation, use JSON parsing
 	status := make(map[string]string)
 	lines := strings.Split(string(output), "\n")
@@ -101,6 +101,6 @@ func GetServiceStatus() (map[string]string, error) {
 			}
 		}
 	}
-	
+
 	return status, nil
 }

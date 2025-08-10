@@ -34,7 +34,7 @@ quick setup. Use 'nizam add' for interactive variable configuration.`,
 		}
 
 		var serviceNames []string
-		
+
 		// Parse custom services if provided
 		if addServices != "" {
 			// Split by comma and trim spaces
@@ -109,6 +109,6 @@ func generateConfigWithServices(serviceNames []string, useDefaults bool) error {
 
 func init() {
 	initCmd.Flags().StringVar(&addServices, "add", "", "Comma-separated list of services to add instead of defaults (e.g., 'postgres,mysql,redis')")
-	
+
 	rootCmd.AddCommand(initCmd)
 }

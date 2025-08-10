@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/abdultolba/nizam/internal/doctor"
 	"github.com/abdultolba/nizam/internal/doctor/checks"
+	"github.com/spf13/cobra"
 )
 
 func NewDoctorCmd() *cobra.Command {
@@ -79,25 +79,25 @@ Use --json for machine-readable output, --fix to attempt automatic fixes.`,
 			} else {
 				rep.PrintHuman()
 			}
-			
+
 			if rep.Summary.RequiredFailed > 0 {
 				return doctor.ErrRequiredFailed
 			}
 			return nil
 		},
 	}
-	
+
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "output JSON")
 	cmd.Flags().BoolVar(&verbose, "verbose", false, "verbose output")
 	cmd.Flags().BoolVar(&fix, "fix", false, "attempt supported fixes")
 	cmd.Flags().StringVar(&skipStr, "skip", "", "comma-separated check IDs to skip")
-	
+
 	return cmd
 }
 
 func getPortChecks(cfg *config.Config) []doctor.Check {
 	var portChecks []doctor.Check
-	
+
 	for serviceName, service := range cfg.Services {
 		for _, portMapping := range service.Ports {
 			parts := strings.Split(portMapping, ":")
@@ -112,7 +112,7 @@ func getPortChecks(cfg *config.Config) []doctor.Check {
 			}
 		}
 	}
-	
+
 	return portChecks
 }
 

@@ -14,6 +14,18 @@
 - 💻 **Direct service interaction**: `nizam exec postgres psql -U user`
 - 🐳 **Docker-native**: Uses Docker containers with sensible defaults
 
+### Data Lifecycle Management
+
+- 📸 **Database Snapshots**: Create, restore, list, and prune database snapshots with `nizam snapshot`
+  - **Multi-engine support**: PostgreSQL and Redis (MySQL/MongoDB planned)
+  - **Compression options**: zstd (default), gzip, or none
+  - **Atomic operations**: Safe snapshot creation and restoration
+  - **Metadata tracking**: Tagged snapshots with notes and checksums
+- 🔗 **One-liner Database Access**: Smart CLI tools with auto-resolved connections
+  - `nizam psql [service]` - Connect to PostgreSQL with resolved credentials
+  - `nizam redis-cli [service]` - Connect to Redis with auto-configuration
+  - **Fallback execution**: Uses host binaries or container execution automatically
+
 ### Development & Operations Tools
 
 - 🩺 **Environment Doctor**: Comprehensive preflight checks with `nizam doctor`
@@ -475,6 +487,223 @@ nizam health-server --address :3030
 # Team members access: http://dev-server:3030
 ```
 
+## Data Lifecycle Management 📸
+
+nizam provides comprehensive data lifecycle tools for database snapshots and one-liner database access, making it easy to capture, restore, and work with database states during development.
+
+### Database Snapshots
+
+Create point-in-time snapshots of your databases for backup, testing, or sharing data states.
+
+#### Snapshot Features
+
+- 🎯 **Multi-engine support**: PostgreSQL and Redis (MySQL/MongoDB planned)
+- 🗜️ **Smart compression**: zstd (default), gzip, or none with automatic streaming
+- 🔒 **Data integrity**: SHA256 checksums for all snapshot files
+- 📋 **Rich metadata**: Tagged snapshots with notes, timestamps, and version tracking
+- 📁 **Organized storage**: Structured storage in `.nizam/snapshots/<service>/`
+- ⚡ **Atomic operations**: Safe creation and restoration with temporary files
+
+#### Quick Snapshot Examples
+
+```bash
+# Create a snapshot with automatic timestamping
+nizam snapshot create postgres
+
+# Create a tagged snapshot with notes
+nizam snapshot create postgres --tag "before-migration" --note "Pre-schema update"
+
+# Create with different compression
+nizam snapshot create redis --compress gzip
+
+# List all snapshots
+nizam snapshot list
+
+# List snapshots for specific service
+nizam snapshot list postgres
+
+# Restore latest snapshot
+nizam snapshot restore postgres --latest
+
+# Restore specific tagged snapshot
+nizam snapshot restore postgres --tag "before-migration"
+
+# Clean up old snapshots (keep 5 most recent)
+nizam snapshot prune postgres --keep 5
+```
+
+#### Snapshot Commands
+
+**`nizam snapshot create <service>`**
+
+```bash
+# Basic snapshot creation
+nizam snapshot create postgres
+nizam snapshot create redis
+
+# With custom options
+nizam snapshot create postgres --tag "v1.2.0" --compress zstd --note "Release snapshot"
+
+# Available flags:
+    --compress string   Compression type: zstd, gzip, none (default "zstd")
+    --note string      Note/description for the snapshot
+    --tag string       Tag for the snapshot (default: timestamp)
+```
+
+**`nizam snapshot list [service]`**
+
+```bash
+# List all snapshots across all services
+nizam snapshot list
+
+# List snapshots for specific service
+nizam snapshot list postgres
+
+# JSON output for automation
+nizam snapshot list --json
+```
+
+**`nizam snapshot restore <service>`**
+
+```bash
+# Restore latest snapshot
+nizam snapshot restore postgres --latest
+
+# Restore specific tagged snapshot
+nizam snapshot restore postgres --tag "before-migration"
+
+# Available flags:
+    --force          Skip confirmation prompts
+    --latest         Restore the most recent snapshot
+    --tag string     Restore snapshot with specific tag
+```
+
+**`nizam snapshot prune <service>`**
+
+```bash
+# Remove old snapshots, keeping 3 most recent
+nizam snapshot prune postgres --keep 3
+
+# Dry run to see what would be deleted
+nizam snapshot prune postgres --keep 5 --dry-run
+
+# Available flags:
+    --dry-run        Show what would be deleted without actually deleting
+    --keep int       Number of snapshots to keep (required)
+```
+
+### One-liner Database Access
+
+Connect to your databases instantly with auto-resolved connection parameters.
+
+#### Features
+
+- 🔧 **Auto-resolution**: Automatically discovers connection details from configuration
+- 🔄 **Smart fallback**: Uses host binaries when available, falls back to container execution
+- 🎯 **Service detection**: Auto-detects the first service of each type if not specified
+- 📋 **Pass-through args**: All arguments after `--` are passed directly to the database CLI
+
+#### PostgreSQL Access
+
+**`nizam psql [service]`**
+
+```bash
+# Connect to first/default PostgreSQL service
+nizam psql
+
+# Connect to specific service
+nizam psql postgres
+nizam psql api-db
+
+# Override connection parameters
+nizam psql --user admin --db production
+
+# Pass arguments to psql
+nizam psql -- --help
+nizam psql -- -c "SELECT version()"
+nizam psql postgres -- -c "\\l"
+
+# Available flags:
+    --db string       Database name (override config)
+    --user string     Username (override config)
+```
+
+#### Redis Access
+
+**`nizam redis-cli [service]`**
+
+```bash
+# Connect to first/default Redis service
+nizam redis-cli
+
+# Connect to specific service
+nizam redis-cli redis
+nizam redis-cli cache
+
+# Pass arguments to redis-cli
+nizam redis-cli -- --help
+nizam redis-cli -- ping
+nizam redis-cli cache -- info server
+```
+
+#### Connection Resolution
+
+The one-liner commands automatically resolve connection details from your configuration:
+
+1. **Service Discovery**: If no service specified, uses the first service of matching type
+2. **Credential Extraction**: Pulls username, password, database, and port from service environment
+3. **Host Binary Detection**: Checks if `psql`, `redis-cli`, etc. are available on the host
+4. **Fallback Execution**: Uses `docker exec` if host binaries are not found
+5. **Connection String Building**: Constructs proper connection URLs with credentials
+
+#### vs. Raw Container Execution
+
+**Key Difference**: `nizam psql` is a **smart database client** that auto-resolves connections, while `nizam exec postgres psql` is **raw container command execution**.
+
+| Feature | `nizam psql` | `nizam exec postgres psql` |
+|---------|--------------|----------------------------|
+| **Credential resolution** | ✅ Automatic from config | ❌ Manual specification required |
+| **Connection strings** | ✅ Auto-built URLs | ❌ Manual argument construction |
+| **Host binary usage** | ✅ Uses host `psql` if available | ❌ Always executes in container |
+| **Service discovery** | ✅ Auto-finds PostgreSQL service | ❌ Must specify exact service name |
+| **Ease of use** | 🟢 Just works | 🟡 Requires connection knowledge |
+
+**Examples:**
+```bash
+# Smart connection (auto-resolves everything)
+nizam psql                           # Connects automatically
+nizam psql -- -c "SELECT version()"   # Runs query with auto-connection
+
+# Raw container execution (manual specification required)
+nizam exec postgres psql -U user -d mydb -h localhost
+nizam exec postgres psql -U user -c "SELECT version()" mydb
+```
+
+**Example Resolution:**
+
+```yaml
+# .nizam.yaml
+services:
+  postgres:
+    image: postgres:16
+    ports: ["5432:5432"]
+    env:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypass
+      POSTGRES_DB: mydb
+```
+
+```bash
+# This command:
+nizam psql
+
+# Resolves to:
+psql "postgresql://myuser:mypass@localhost:5432/mydb?sslmode=disable"
+
+# Or if psql not on host:
+docker exec -it nizam_postgres psql -U myuser -d mydb
+```
+
 ## Development & Operations Tools 🛠️
 
 nizam includes comprehensive tooling for development workflow optimization, environment validation, and operational reliability.
@@ -785,20 +1014,52 @@ nizam doctor --fix
   - [x] Bash, Zsh, Fish, and PowerShell support
   - [x] Dynamic command and flag completion
 
+### Data Lifecycle Management ✅
+
+- [x] **Database Snapshots** (`nizam snapshot`): Complete snapshot lifecycle management
+  - [x] PostgreSQL and Redis snapshot engines with streaming dumps
+  - [x] Multi-compression support (zstd, gzip, none) with checksum verification
+  - [x] Rich manifest system with metadata, tags, and notes
+  - [x] Atomic operations with temporary files and safe renames
+  - [x] Organized storage in `.nizam/snapshots/<service>/` structure
+  - [x] Create, list, restore, and prune operations with comprehensive CLI
+- [x] **One-liner Database Access**: Smart database CLI tools
+  - [x] `nizam psql [service]` - Auto-resolved PostgreSQL connections
+  - [x] `nizam redis-cli [service]` - Auto-resolved Redis connections
+  - [x] Service auto-discovery and credential resolution from configuration
+  - [x] Host binary detection with container execution fallback
+  - [x] Pass-through argument support for native CLI tools
+
 ### Documentation & Examples ✅
 
 - [x] Comprehensive README with feature documentation
 - [x] CLI commands documentation (`docs/COMMANDS.md`)
 - [x] Module-specific documentation (`internal/doctor/README.md`, `internal/lint/README.md`)
+- [x] Data lifecycle specification (`.docs/data-lifecycle.md`)
 - [x] Implementation status tracking (`FEATURE_IMPLEMENTATION.md`)
 - [x] Usage examples and integration patterns
+- [x] Complete unit test coverage with Makefile integration
 
-### Planned Features 🔄
+### Planned Data Lifecycle Features 🔄
+
+- [ ] **MySQL & MongoDB Snapshots**: Extend snapshot support to additional databases
+- [ ] **Seed Pack System**: Versioned, shareable dataset management
+  - [ ] Local seed pack registry with versioning
+  - [ ] Team/remote registry support (Git, URL-based)
+  - [ ] Seed pack creation from snapshots with data masking
+- [ ] **Safe Production Imports**: Data masking and sanitization
+  - [ ] Built-in masking profiles (minimal-pii, full-pii, payments-safe)
+  - [ ] Custom YAML-based masking rule definitions
+  - [ ] Deterministic faker for consistent data transformation
+- [ ] **Additional Database CLIs**: MySQL, MongoDB one-liner access
+- [ ] **Encryption Support**: Age-based snapshot encryption
+- [ ] **S3 Integration**: Remote snapshot storage and registries
+
+### Other Planned Features 🔄
 
 - [ ] **Profile Management**: Multi-environment configuration support
 - [ ] **Network Management**: Custom Docker network creation and management
 - [ ] **Plugin System**: Extensible architecture for third-party integrations
-- [ ] **Backup & Restore**: Service data backup and restoration
 - [ ] **Performance Monitoring**: Resource usage tracking and optimization
 - [ ] **Secret Management**: Secure credential handling and rotation
 

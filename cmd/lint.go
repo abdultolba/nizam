@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/abdultolba/nizam/internal/lint"
+	"github.com/spf13/cobra"
 )
 
 func NewLintCmd() *cobra.Command {

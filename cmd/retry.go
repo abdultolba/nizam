@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/abdultolba/nizam/internal/operations"
+	"github.com/spf13/cobra"
 )
 
 func NewRetryCmd() *cobra.Command {
@@ -39,7 +39,7 @@ network issues, or resource conflicts. It uses exponential backoff between attem
 
 			for attempt := 1; attempt <= attempts; attempt++ {
 				fmt.Printf("Attempt %d/%d: Running 'nizam %s'\n", attempt, attempts, operation)
-				
+
 				err := runOperation(operation, operationArgs)
 				if err == nil {
 					fmt.Printf("✔ Command succeeded on attempt %d\n", attempt)
@@ -47,7 +47,7 @@ network issues, or resource conflicts. It uses exponential backoff between attem
 				}
 
 				fmt.Printf("✖ Attempt %d failed: %v\n", attempt, err)
-				
+
 				if attempt < attempts {
 					waitTime := time.Duration(attempt) * delayDuration
 					fmt.Printf("Waiting %v before next attempt...\n", waitTime)

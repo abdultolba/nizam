@@ -5,6 +5,7 @@ This document provides comprehensive documentation for all nizam CLI commands, o
 ## Table of Contents
 - [Core Operations](#core-operations)
 - [Configuration Management](#configuration-management) 
+- [Data Lifecycle Management](#data-lifecycle-management)
 - [Health & Monitoring](#health--monitoring)
 - [Development Tools](#development-tools)
 - [Utility Commands](#utility-commands)
@@ -163,6 +164,130 @@ nizam remove --confirm postgres
 
 **Options:**
 - `--confirm` - Require confirmation before removal
+
+## Data Lifecycle Management
+
+### `nizam snapshot`
+Manage database snapshots for backup, testing, and data sharing.
+
+#### `nizam snapshot create <service>`
+Create a snapshot of a service database.
+
+```bash
+# Basic snapshot creation
+nizam snapshot create postgres
+nizam snapshot create redis
+
+# With custom options
+nizam snapshot create postgres --tag "v1.2.0" --compress zstd --note "Release snapshot"
+```
+
+**Options:**
+- `--compress string` - Compression type: `zstd` (default), `gzip`, `none`
+- `--note string` - Note/description for the snapshot
+- `--tag string` - Tag for the snapshot (default: timestamp)
+
+#### `nizam snapshot list [service]`
+List snapshots for a specific service or all services.
+
+```bash
+# List all snapshots across all services
+nizam snapshot list
+
+# List snapshots for specific service
+nizam snapshot list postgres
+
+# JSON output for automation
+nizam snapshot list --json
+```
+
+**Options:**
+- `--json` - Output in JSON format
+
+#### `nizam snapshot restore <service>`
+Restore a snapshot for a service.
+
+```bash
+# Restore latest snapshot
+nizam snapshot restore postgres --latest
+
+# Restore specific tagged snapshot
+nizam snapshot restore postgres --tag "before-migration"
+
+# Force restore without confirmation
+nizam snapshot restore postgres --latest --force
+```
+
+**Options:**
+- `--force` - Skip confirmation prompts
+- `--latest` - Restore the most recent snapshot
+- `--tag string` - Restore snapshot with specific tag
+
+#### `nizam snapshot prune <service>`
+Remove old snapshots, keeping the N most recent.
+
+```bash
+# Remove old snapshots, keeping 3 most recent
+nizam snapshot prune postgres --keep 3
+
+# Dry run to see what would be deleted
+nizam snapshot prune postgres --keep 5 --dry-run
+```
+
+**Options:**
+- `--dry-run` - Show what would be deleted without actually deleting
+- `--keep int` - Number of snapshots to keep (required)
+
+### `nizam psql`
+Connect to PostgreSQL services with auto-resolved credentials.
+
+```bash
+# Connect to first/default PostgreSQL service
+nizam psql
+
+# Connect to specific service
+nizam psql postgres
+nizam psql api-db
+
+# Override connection parameters
+nizam psql --user admin --db production
+
+# Pass arguments to psql
+nizam psql -- --help
+nizam psql -- -c "SELECT version()"
+nizam psql postgres -- -c "\\l"
+```
+
+**Options:**
+- `--db string` - Database name (override config)
+- `--user string` - Username (override config)
+
+**Key Difference from `nizam exec`:**
+- `nizam psql` auto-resolves credentials and builds connection strings
+- `nizam exec postgres psql` requires manual specification of all connection details
+
+### `nizam redis-cli`
+Connect to Redis services with auto-configuration.
+
+```bash
+# Connect to first/default Redis service
+nizam redis-cli
+
+# Connect to specific service
+nizam redis-cli redis
+nizam redis-cli cache
+
+# Pass arguments to redis-cli
+nizam redis-cli -- --help
+nizam redis-cli -- ping
+nizam redis-cli cache -- info server
+```
+
+**Key Features:**
+- Auto-discovers Redis services from configuration
+- Extracts authentication details automatically
+- Uses host binaries when available, falls back to container execution
+- Supports pass-through arguments after `--`
 
 ## Health & Monitoring
 

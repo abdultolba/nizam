@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/abdultolba/nizam/internal/doctor"
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type DiskFree struct {

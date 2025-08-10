@@ -43,7 +43,7 @@ type Runner struct {
 }
 
 type Summary struct {
-	RequiredFailed  int `json:"required_failed"`
+	RequiredFailed int `json:"required_failed"`
 	AdvisoryFailed int `json:"advisory_failed"`
 }
 
