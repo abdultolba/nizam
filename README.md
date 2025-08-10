@@ -680,8 +680,8 @@ nizam doctor --verbose
 ! net.mtu              non-standard MTU detected
   VPNs may lower MTU; if Docker networking is flaky, align MTU in daemon.json
 ✖ port.5432            port in use
-  Change host port for service postgres
-  Or run: nizam up --resolve-ports
+  Change host port for service postgres in .nizam.yaml
+  Or stop the process using the port
 ```
 
 ### Configuration Validation (`nizam validate`)

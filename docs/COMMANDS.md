@@ -20,17 +20,7 @@ nizam up
 
 # Start specific services
 nizam up postgres redis
-
-# Start with automatic port conflict resolution
-nizam up --resolve-ports
-
-# Start in detached mode (default)
-nizam up --detach
 ```
-
-**Options:**
-- `--resolve-ports` - Automatically resolve port conflicts by remapping
-- `--detach, -d` - Run services in detached mode (background)
 
 ### `nizam down`
 Stop all running nizam services and clean up resources.
@@ -520,7 +510,7 @@ nizam lint --json
 nizam doctor --json
 
 # Start services for testing
-nizam up --detach
+nizam up
 
 # Wait for services to be ready
 nizam wait-for --timeout 60s

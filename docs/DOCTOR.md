@@ -57,8 +57,8 @@ nizam doctor --verbose
 ! net.mtu              non-standard MTU detected
   VPNs may lower MTU; if Docker networking is flaky, align MTU in daemon.json
 ✖ port.5432            port in use
-  Change host port for service postgres
-  Or run: nizam up --resolve-ports
+  Change host port for service postgres in .nizam.yaml
+  Or stop the process using the port
 
 Summary: required_failed=1 advisory_failed=1
 ```
@@ -332,7 +332,7 @@ nizam up web api
 #### CI/CD Testing
 ```bash
 # Ensure services are ready before running tests
-nizam up --detach
+nizam up
 nizam wait-for --timeout 120s
 npm test
 ```
@@ -586,7 +586,6 @@ echo "✅ Production deployment checks passed"
 - Identify conflicting process: `lsof -i :5432`
 - Use different host port in configuration
 - Stop conflicting service
-- Use `nizam up --resolve-ports` for automatic resolution
 
 #### MTU Configuration Warnings
 ```

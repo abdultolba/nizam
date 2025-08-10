@@ -250,7 +250,7 @@ The doctor system uses structured error handling:
 **Port checks fail**
 - Identify conflicting processes: `lsof -i :PORT`
 - Consider using different ports
-- Use `--resolve-ports` flag with `nizam up`
+- Modify port mappings in .nizam.yaml
 
 **MTU warnings**
 - Common with VPN connections

@@ -90,8 +90,8 @@ func (c PortInUse) Run(ctx context.Context) (doctor.Result, error) {
 			ID: c.ID(), Status: doctor.Fail, Severity: "required",
 			Message: "port in use", Details: map[string]any{"addr": addr},
 			Hints: []string{
-				fmt.Sprintf("Change host port for service %s", c.Svc),
-				"Or run: nizam up --resolve-ports",
+				fmt.Sprintf("Change host port for service %s in .nizam.yaml", c.Svc),
+				"Or stop the process using the port",
 			},
 		}, nil
 	}
