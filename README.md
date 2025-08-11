@@ -25,6 +25,7 @@
   - `nizam psql [service]` - Connect to PostgreSQL with resolved credentials
   - `nizam mysql [service]` - Connect to MySQL with auto-resolved credentials
   - `nizam redis-cli [service]` - Connect to Redis with auto-configuration
+  - `nizam mongosh [service]` - Connect to MongoDB with auto-configuration
   - **Fallback execution**: Uses host binaries or container execution automatically
 
 ### Development & Operations Tools
@@ -652,6 +653,7 @@ nizam mysql api-db -- -e "SELECT version()"
 ```
 
 **Available flags:**
+
 - `--db string` - Database name (override config)
 - `--user string` - Username (override config)
 
@@ -687,15 +689,16 @@ The one-liner commands automatically resolve connection details from your config
 
 **Key Difference**: `nizam psql` is a **smart database client** that auto-resolves connections, while `nizam exec postgres psql` is **raw container command execution**.
 
-| Feature | `nizam psql` | `nizam exec postgres psql` |
-|---------|--------------|----------------------------|
-| **Credential resolution** | ✅ Automatic from config | ❌ Manual specification required |
-| **Connection strings** | ✅ Auto-built URLs | ❌ Manual argument construction |
-| **Host binary usage** | ✅ Uses host `psql` if available | ❌ Always executes in container |
-| **Service discovery** | ✅ Auto-finds PostgreSQL service | ❌ Must specify exact service name |
-| **Ease of use** | 🟢 Just works | 🟡 Requires connection knowledge |
+| Feature                   | `nizam psql`                     | `nizam exec postgres psql`         |
+| ------------------------- | -------------------------------- | ---------------------------------- |
+| **Credential resolution** | ✅ Automatic from config         | ❌ Manual specification required   |
+| **Connection strings**    | ✅ Auto-built URLs               | ❌ Manual argument construction    |
+| **Host binary usage**     | ✅ Uses host `psql` if available | ❌ Always executes in container    |
+| **Service discovery**     | ✅ Auto-finds PostgreSQL service | ❌ Must specify exact service name |
+| **Ease of use**           | 🟢 Just works                    | 🟡 Requires connection knowledge   |
 
 **Examples:**
+
 ```bash
 # Smart connection (auto-resolves everything)
 nizam psql                           # Connects automatically
@@ -1055,7 +1058,7 @@ nizam doctor --fix
 ### Data Lifecycle Management ✅
 
 - [x] **Database Snapshots** (`nizam snapshot`): Complete snapshot lifecycle management
-  - [x] PostgreSQL, MySQL, and Redis snapshot engines with streaming dumps
+  - [x] PostgreSQL, MySQL, Redis, and MongoDB snapshot engines with streaming dumps
   - [x] Multi-compression support (zstd, gzip, none) with checksum verification
   - [x] Rich manifest system with metadata, tags, and notes
   - [x] Atomic operations with temporary files and safe renames
@@ -1065,6 +1068,7 @@ nizam doctor --fix
   - [x] `nizam psql [service]` - Auto-resolved PostgreSQL connections
   - [x] `nizam mysql [service]` - Auto-resolved MySQL connections
   - [x] `nizam redis-cli [service]` - Auto-resolved Redis connections
+  - [x] `nizam mongosh [service]` - Auto-resolved MongoDB connections
   - [x] Service auto-discovery and credential resolution from configuration
   - [x] Host binary detection with container execution fallback
   - [x] Pass-through argument support for native CLI tools
@@ -1075,14 +1079,13 @@ nizam doctor --fix
 - [x] CLI commands documentation (`docs/COMMANDS.md`)
 - [x] Module-specific documentation (`internal/doctor/README.md`, `internal/lint/README.md`)
 - [x] Data lifecycle specification (`.docs/data-lifecycle.md`)
-- [x] Implementation status tracking (`FEATURE_IMPLEMENTATION.md`)
 - [x] Usage examples and integration patterns
 - [x] Complete unit test coverage with Makefile integration
 
 ### Planned Data Lifecycle Features 🔄
 
 - [x] **MySQL Snapshots & CLI**: MySQL database snapshot and one-liner access support ✅
-- [ ] **MongoDB Snapshots & CLI**: MongoDB snapshot support and one-liner access
+- [x] **MongoDB Snapshots & CLI**: MongoDB snapshot support and one-liner access ✅
 - [ ] **Seed Pack System**: Versioned, shareable dataset management
   - [ ] Local seed pack registry with versioning
   - [ ] Team/remote registry support (Git, URL-based)

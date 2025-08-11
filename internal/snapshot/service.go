@@ -47,9 +47,9 @@ func NewService(docker *dockerx.Client) *Service {
 	engines["mysql"] = mysqlEngine
 	engines["mariadb"] = mysqlEngine
 
-	// TODO: Add MongoDB engine
-	// mongoEngine := engines.NewMongoEngine(docker)
-	// engines["mongo"] = mongoEngine
+	mongoEngine := NewMongoDBEngine(docker)
+	engines["mongo"] = mongoEngine
+	engines["mongodb"] = mongoEngine
 
 	return &Service{
 		docker:  docker,

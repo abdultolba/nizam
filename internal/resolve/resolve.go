@@ -54,11 +54,11 @@ func GetServiceInfo(cfg *config.Config, serviceName string) (ServiceInfo, error)
 	// Extract credentials and database from environment variables
 	for key, value := range service.Environment {
 		switch strings.ToLower(key) {
-		case "postgres_user", "mysql_user", "user":
+		case "postgres_user", "mysql_user", "mongo_initdb_root_username", "user":
 			info.User = value
-		case "postgres_password", "mysql_password", "password":
+		case "postgres_password", "mysql_password", "mongo_initdb_root_password", "password":
 			info.Password = value
-		case "postgres_db", "mysql_database", "database", "db":
+		case "postgres_db", "mysql_database", "mongo_initdb_database", "database", "db":
 			info.Database = value
 		}
 	}
