@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/abdultolba/nizam/internal/binary"
 	"github.com/abdultolba/nizam/internal/config"
 )
 
@@ -229,7 +230,21 @@ func (si ServiceInfo) GetClientArgs() []string {
 
 // HasHostClient checks if the client binary is available on the host
 func HasHostClient(engine string) bool {
-	// TODO: Implement actual binary checking
-	// For now, assume clients are not available and fallback to docker exec
-	return false
+	return HasHostClientBinary(engine)
+}
+
+// HasHostClientBinary checks if the appropriate client binary is available for the given engine
+func HasHostClientBinary(engine string) bool {
+	switch engine {
+	case "postgres":
+		return binary.HasBinary(binary.PostgreSQL)
+	case "mysql":
+		return binary.HasBinary(binary.MySQL)
+	case "redis":
+		return binary.HasBinary(binary.Redis)
+	case "mongo":
+		return binary.HasBinary(binary.MongoDB)
+	default:
+		return false
+	}
 }
