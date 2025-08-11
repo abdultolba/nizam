@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"syscall"
 	"time"
 
+	"github.com/abdultolba/nizam/internal/binary"
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/abdultolba/nizam/internal/dockerx"
 	"github.com/abdultolba/nizam/internal/resolve"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -87,8 +91,13 @@ func runPSQL(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Check if host has psql (TODO: implement actual binary detection)
-	// For now, always use docker exec
+	// Try host binary first, fallback to container execution
+	if binary.HasBinary(binary.PostgreSQL) {
+		log.Debug().Msg("Using host psql binary")
+		return connectWithHostPsql(serviceInfo, passthroughArgs)
+	}
+
+	log.Debug().Msg("psql not found on host, using container execution")
 	return connectViaDocker(ctx, serviceInfo, passthroughArgs)
 }
 
@@ -123,4 +132,37 @@ func connectViaDocker(ctx context.Context, serviceInfo resolve.ServiceInfo, extr
 
 	// Execute with TTY
 	return docker.ExecTTY(ctx, serviceInfo.Container, cmd)
+}
+
+// connectWithHostPsql connects using the host's psql binary
+func connectWithHostPsql(service resolve.ServiceInfo, extraArgs []string) error {
+	connStr := service.GetConnectionString()
+	args := []string{connStr}
+	args = append(args, extraArgs...)
+
+	if viper.GetBool("verbose") {
+		fmt.Fprintf(os.Stderr, "Connecting to: %s\n", dockerx.RedactConnectionString(connStr, false))
+	}
+
+	log.Debug().
+		Str("command", "psql").
+		Strs("args", []string{dockerx.RedactConnectionString(connStr, true)}).
+		Msg("Executing host psql client")
+
+	// Execute psql with connection string
+	cmd := exec.Command("psql", args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				os.Exit(status.ExitStatus())
+			}
+		}
+		return fmt.Errorf("psql command failed: %w", err)
+	}
+
+	return nil
 }
