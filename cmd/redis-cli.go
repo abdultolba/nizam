@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
+	"syscall"
 	"time"
 
+	"github.com/abdultolba/nizam/internal/binary"
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/abdultolba/nizam/internal/dockerx"
 	"github.com/abdultolba/nizam/internal/resolve"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -76,6 +81,13 @@ func runRedisCliCmd(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	// Try host binary first, fallback to container execution
+	if binary.HasBinary(binary.Redis) {
+		log.Debug().Msg("Using host redis-cli binary")
+		return connectWithHostRedis(serviceInfo, passthroughArgs)
+	}
+
+	log.Debug().Msg("redis-cli not found on host, using container execution")
 	return connectRedisViaDocker(ctx, serviceInfo, passthroughArgs)
 }
 
@@ -119,4 +131,65 @@ func connectRedisViaDocker(ctx context.Context, serviceInfo resolve.ServiceInfo,
 
 	// Execute with TTY
 	return docker.ExecTTY(ctx, serviceInfo.Container, cmd)
+}
+
+// connectWithHostRedis connects using the host's redis-cli binary
+func connectWithHostRedis(service resolve.ServiceInfo, extraArgs []string) error {
+	args := []string{}
+	
+	// Add connection parameters
+	if service.Host != "" && service.Host != "localhost" {
+		args = append(args, "-h", service.Host)
+	}
+	if service.Port != 0 && service.Port != 6379 {
+		args = append(args, "-p", strconv.Itoa(service.Port))
+	}
+	if service.Password != "" {
+		args = append(args, "-a", service.Password)
+	}
+
+	// Add extra arguments
+	args = append(args, extraArgs...)
+
+	if viper.GetBool("verbose") {
+		connStr := fmt.Sprintf("redis://%s:%d", service.Host, service.Port)
+		fmt.Fprintf(os.Stderr, "Connecting to: %s\n", dockerx.RedactConnectionString(connStr, false))
+	}
+
+	log.Debug().
+		Str("command", "redis-cli").
+		Strs("args", redactRedisCredentials(args)).
+		Msg("Executing host redis-cli client")
+
+	// Execute redis-cli
+	cmd := exec.Command("redis-cli", args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				os.Exit(status.ExitStatus())
+			}
+		}
+		return fmt.Errorf("redis-cli command failed: %w", err)
+	}
+
+	return nil
+}
+
+// redactRedisCredentials removes sensitive information from redis-cli arguments for logging
+func redactRedisCredentials(args []string) []string {
+	redacted := make([]string, len(args))
+	copy(redacted, args)
+
+	for i := 0; i < len(redacted); i++ {
+		if redacted[i] == "-a" && i+1 < len(redacted) {
+			redacted[i+1] = "[REDACTED]"
+			i++ // skip the password value
+		}
+	}
+
+	return redacted
 }
