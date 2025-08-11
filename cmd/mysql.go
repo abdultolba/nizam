@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/abdultolba/nizam/internal/binary"
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/abdultolba/nizam/internal/dockerx"
 	"github.com/abdultolba/nizam/internal/resolve"
@@ -146,11 +148,12 @@ func runMysqlCmd(cmd *cobra.Command, args []string) error {
 		Msg("Connecting to MySQL service")
 
 	// Try host binary first, fallback to container execution
-	if hasHostMySQLClient() {
+	if binary.HasBinary(binary.MySQL) {
+		log.Debug().Msg("Using host mysql binary")
 		return connectWithHostMySQL(serviceInfo, mysqlArgs)
 	}
 
-	log.Debug().Msg("MySQL client not found on host, using container execution")
+	log.Debug().Msg("mysql not found on host, using container execution")
 	return connectWithContainerMySQL(serviceInfo, mysqlArgs)
 }
 
@@ -166,11 +169,6 @@ func findFirstMySQLService(cfg *config.Config) (resolve.ServiceInfo, error) {
 	return resolve.ServiceInfo{}, fmt.Errorf("no MySQL services found in configuration")
 }
 
-// hasHostMySQLClient checks if mysql client is available on the host
-func hasHostMySQLClient() bool {
-	_, err := exec.LookPath("mysql")
-	return err == nil
-}
 
 // connectWithHostMySQL connects using the host's mysql binary
 func connectWithHostMySQL(service resolve.ServiceInfo, extraArgs []string) error {
@@ -204,7 +202,16 @@ func connectWithHostMySQL(service resolve.ServiceInfo, extraArgs []string) error
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				os.Exit(status.ExitStatus())
+			}
+		}
+		return fmt.Errorf("mysql command failed: %w", err)
+	}
+
+	return nil
 }
 
 // connectWithContainerMySQL connects using mysql inside the container
