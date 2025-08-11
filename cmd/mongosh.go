@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/abdultolba/nizam/internal/binary"
 	"github.com/abdultolba/nizam/internal/config"
 	"github.com/abdultolba/nizam/internal/dockerx"
 	"github.com/abdultolba/nizam/internal/resolve"
@@ -146,11 +148,12 @@ func runMongoshCmd(cmd *cobra.Command, args []string) error {
 		Msg("Connecting to MongoDB service")
 
 	// Try host binary first, fallback to container execution
-	if hasHostMongoshClient() {
+	if binary.HasBinary(binary.MongoDB) {
+		log.Debug().Msg("Using host mongosh binary")
 		return connectWithHostMongosh(serviceInfo, mongoshArgs)
 	}
 
-	log.Debug().Msg("mongosh client not found on host, using container execution")
+	log.Debug().Msg("mongosh not found on host, using container execution")
 	return connectWithContainerMongosh(serviceInfo, mongoshArgs)
 }
 
@@ -166,11 +169,6 @@ func findFirstMongoDBService(cfg *config.Config) (resolve.ServiceInfo, error) {
 	return resolve.ServiceInfo{}, fmt.Errorf("no MongoDB services found in configuration")
 }
 
-// hasHostMongoshClient checks if mongosh client is available on the host
-func hasHostMongoshClient() bool {
-	_, err := exec.LookPath("mongosh")
-	return err == nil
-}
 
 // connectWithHostMongosh connects using the host's mongosh binary
 func connectWithHostMongosh(service resolve.ServiceInfo, extraArgs []string) error {
@@ -203,7 +201,16 @@ func connectWithHostMongosh(service resolve.ServiceInfo, extraArgs []string) err
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				os.Exit(status.ExitStatus())
+			}
+		}
+		return fmt.Errorf("mongosh command failed: %w", err)
+	}
+
+	return nil
 }
 
 // connectWithContainerMongosh connects using mongosh inside the container
