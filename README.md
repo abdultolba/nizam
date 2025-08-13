@@ -120,7 +120,7 @@ services:
 
 ## Service Templates
 
-nizam includes 16+ built-in service templates for popular development tools:
+nizam includes 17+ built-in service templates for popular development tools:
 
 **Databases:**
 
@@ -128,6 +128,7 @@ nizam includes 16+ built-in service templates for popular development tools:
 - `mysql` - MySQL database
 - `mongodb` - MongoDB document database
 - `redis` / `redis-stack` - Redis cache and data store
+- `clickhouse` - ClickHouse OLAP database for analytics
 - `elasticsearch` - Elasticsearch search engine
 
 **Messaging & Streaming:**
