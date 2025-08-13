@@ -126,23 +126,146 @@ func (r *Runner) Run(ctx context.Context, skip map[string]struct{}, doFix bool) 
 }
 
 func (r Report) PrintHuman() {
+	fmt.Println("🔍 Running system diagnostics...")
+	fmt.Println()
+
+	// Track stats for final summary
+	var totalChecks, passedChecks, failedChecks, warnChecks int
+	var systemReady = true
+	var recommendations []string
+
 	for _, c := range r.Checks {
-		icon := "✔"
+		totalChecks++
+		
+		// Skip user-skipped checks in main output
+		if c.Status == Warn && c.Message == "skipped by user" {
+			continue
+		}
+
+		icon := "✓"
+		colorCode := "\033[32m" // green
+		resetCode := "\033[0m"
+		
 		if c.Status == Fail {
-			icon = "✖"
+			icon = "✗"
+			colorCode = "\033[31m" // red
+			failedChecks++
+			systemReady = false
 		} else if c.Status == Warn {
-			icon = "!"
+			icon = "⚠"
+			colorCode = "\033[33m" // yellow
+			warnChecks++
+			if c.Severity == "required" {
+				systemReady = false
+			}
+		} else {
+			passedChecks++
 		}
-		line := fmt.Sprintf("%s %-20s", icon, c.ID)
-		if c.Message != "" {
-			line += " " + c.Message
+
+		// Generate human-readable description
+		description := getCheckDescription(c)
+		
+		fmt.Printf("%s%s %s%s\n", colorCode, icon, description, resetCode)
+		
+		// Show error message if failed
+		if c.Status == Fail && c.Message != "" {
+			fmt.Printf("  \033[31m✗ %s\033[0m\n", c.Message)
 		}
-		fmt.Println(line)
-		for _, h := range c.Hints {
-			fmt.Printf("  %s\n", h)
+		
+		// Show warning details for MTU and other warnings
+		if c.Status == Warn && c.Message != "" && c.Message != "skipped by user" {
+			fmt.Printf("  \033[33m⚠ %s\033[0m\n", c.Message)
+		}
+
+		// Collect recommendations from hints
+		for _, hint := range c.Hints {
+			if c.Status == Fail {
+				// Show immediate fixes for failed checks
+				fmt.Printf("  \033[36m• %s\033[0m\n", hint)
+			} else if c.Status == Warn {
+				// Collect recommendations for warnings
+				recommendations = append(recommendations, hint)
+			}
 		}
 	}
-	fmt.Printf("\nSummary: required_failed=%d advisory_failed=%d\n", r.Summary.RequiredFailed, r.Summary.AdvisoryFailed)
+
+	fmt.Println()
+
+	// Final status
+	if systemReady {
+		fmt.Println("🎉 System ready for Nizam!")
+	} else {
+		fmt.Println("❌ System needs attention before running Nizam")
+	}
+
+	// Show recommendations if any
+	if len(recommendations) > 0 {
+		fmt.Println("\nRecommendations:")
+		for _, rec := range recommendations {
+			fmt.Printf("  • %s\n", rec)
+		}
+	}
+
+	// Show summary if there are failures or advisory issues
+	if r.Summary.RequiredFailed > 0 || r.Summary.AdvisoryFailed > 0 {
+		fmt.Printf("\nIssues found: %d required, %d advisory\n", r.Summary.RequiredFailed, r.Summary.AdvisoryFailed)
+	}
+
+	// Count skipped checks
+	skippedCount := 0
+	for _, c := range r.Checks {
+		if c.Status == Warn && c.Message == "skipped by user" {
+			skippedCount++
+		}
+	}
+	if skippedCount > 0 {
+		fmt.Printf("\nSkipped %d check(s) by user request\n", skippedCount)
+	}
+}
+
+func getCheckDescription(c Result) string {
+	// Extract version info from details if available
+	var versionInfo string
+	if details, ok := c.Details.(map[string]interface{}); ok {
+		if version, exists := details["version"]; exists {
+			versionInfo = fmt.Sprintf(" %v", version)
+		}
+		if freeBytes, exists := details["free_bytes"]; exists {
+			if bytes, ok := freeBytes.(uint64); ok {
+				gb := float64(bytes) / (1024 * 1024 * 1024)
+				versionInfo = fmt.Sprintf(": %.1f GB", gb)
+			}
+		}
+	}
+	
+	switch c.ID {
+	case "docker.daemon":
+		return fmt.Sprintf("Docker daemon connectivity%s", versionInfo)
+	case "docker.compose":
+		return "Docker Compose plugin available"
+	case "disk.free":
+		return fmt.Sprintf("Available disk space%s", versionInfo)
+	case "memory.usage":
+		if details, ok := c.Details.(map[string]interface{}); ok {
+			if usedGB, exists := details["used_gb"]; exists {
+				if totalGB, exists := details["total_gb"]; exists {
+					if percent, exists := details["percent"]; exists {
+						return fmt.Sprintf("Memory usage: %s/%s GB (%d%%)", usedGB, totalGB, percent)
+					}
+				}
+			}
+		}
+		return "Memory usage"
+	case "net.mtu":
+		return "Network MTU configuration"
+	default:
+		// Handle port checks
+		if strings.HasPrefix(c.ID, "port.") {
+			port := strings.TrimPrefix(c.ID, "port.")
+			return fmt.Sprintf("Port %s availability", port)
+		}
+		return c.ID
+	}
 }
 
 func (r Report) PrintJSON() {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/abdultolba/nizam/internal/doctor"
 	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type DiskFree struct {
@@ -100,3 +101,48 @@ func (c PortInUse) Run(ctx context.Context) (doctor.Result, error) {
 }
 
 func (c PortInUse) Fix(ctx context.Context) error { return nil }
+
+type MemoryUsage struct{}
+
+func (c MemoryUsage) ID() string { return "memory.usage" }
+
+func (c MemoryUsage) Run(ctx context.Context) (doctor.Result, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	v, err := mem.VirtualMemoryWithContext(ctx)
+	if err != nil {
+		return doctor.Result{ID: c.ID(), Status: doctor.Warn, Severity: "advisory", Message: "cannot determine memory usage"}, nil
+	}
+	
+	usedGB := float64(v.Used) / (1024 * 1024 * 1024)
+	totalGB := float64(v.Total) / (1024 * 1024 * 1024)
+	usagePercent := int(v.UsedPercent)
+	
+	details := map[string]interface{}{
+		"used_gb":    fmt.Sprintf("%.1f", usedGB),
+		"total_gb":   fmt.Sprintf("%.1f", totalGB),
+		"percent":    usagePercent,
+		"available": fmt.Sprintf("%.1f", float64(v.Available)/(1024*1024*1024)),
+	}
+	
+	// Warn if memory usage is very high
+	if v.UsedPercent > 90 {
+		return doctor.Result{
+			ID: c.ID(), Status: doctor.Warn, Severity: "advisory",
+			Message: fmt.Sprintf("High memory usage: %.1f/%.1f GB (%d%%)", usedGB, totalGB, usagePercent),
+			Details: details,
+			Hints: []string{"Consider closing other applications to free up memory"},
+		}, nil
+	} else if totalGB < 4.0 {
+		return doctor.Result{
+			ID: c.ID(), Status: doctor.Warn, Severity: "advisory",
+			Message: fmt.Sprintf("Low system memory: %.1f GB total", totalGB),
+			Details: details,
+			Hints: []string{"Consider upgrading RAM for better Docker performance"},
+		}, nil
+	}
+	
+	return doctor.Result{ID: c.ID(), Status: doctor.OK, Severity: "advisory", Details: details}, nil
+}
+
+func (c MemoryUsage) Fix(context.Context) error { return nil }

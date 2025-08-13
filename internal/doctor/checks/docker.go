@@ -20,19 +20,37 @@ func (c DockerDaemon) Run(ctx context.Context) (doctor.Result, error) {
 	defer cancel()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return doctor.Result{ID: c.ID(), Status: doctor.Fail, Severity: "required", Message: "cannot init docker client"}, nil
+		return doctor.Result{ID: c.ID(), Status: doctor.Fail, Severity: "required", Message: "Docker client initialization failed"}, nil
 	}
 	defer cli.Close()
 
 	if _, err := cli.Ping(ctx); err != nil {
-		return doctor.Result{ID: c.ID(), Status: doctor.Fail, Severity: "required", Message: "docker daemon unreachable. Start Docker Desktop or dockerd"}, nil
+		return doctor.Result{ID: c.ID(), Status: doctor.Fail, Severity: "required", Message: "Docker daemon unreachable. Start Docker Desktop or dockerd"}, nil
 	}
 	sv, err := cli.ServerVersion(ctx)
 	if err != nil {
-		return doctor.Result{ID: c.ID(), Status: doctor.Warn, Severity: "advisory", Message: "cannot read docker version"}, nil
+		return doctor.Result{ID: c.ID(), Status: doctor.Warn, Severity: "advisory", Message: "Cannot read Docker version"}, nil
 	}
-	details := map[string]string{"version": sv.Version, "api": sv.APIVersion}
-	return doctor.Result{ID: c.ID(), Status: doctor.OK, Severity: "required", Details: details}, nil
+	
+	// Provide version info and compatibility hints
+	details := map[string]interface{}{
+		"version": sv.Version,
+		"api": sv.APIVersion,
+	}
+	
+	// Add recommendations based on version
+	var hints []string
+	if sv.Version != "" {
+		// Parse major version for compatibility recommendations
+		if strings.HasPrefix(sv.Version, "20.") || strings.HasPrefix(sv.Version, "23.") {
+			hints = append(hints, "Consider updating to Docker 24.0.7+ for latest security fixes")
+		}
+		if !strings.Contains(sv.Version, "buildx") {
+			hints = append(hints, "Consider enabling Docker BuildKit for faster builds")
+		}
+	}
+	
+	return doctor.Result{ID: c.ID(), Status: doctor.OK, Severity: "required", Details: details, Hints: hints}, nil
 }
 
 func (c DockerDaemon) Fix(context.Context) error { return errors.New("no automatic fix") }
