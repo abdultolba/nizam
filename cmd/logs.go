@@ -43,12 +43,12 @@ Use --follow to continuously stream new logs.`,
 			}
 			return ""
 		}())
-		fmt.Println(fmt.Sprintf("   Press Ctrl+C to stop%s", func() string {
+		fmt.Printf("   Press Ctrl+C to stop%s\n", func() string {
 			if follow {
 				return " following"
 			}
 			return ""
-		}()))
+		}())
 		fmt.Println()
 
 		logsReader, err := dockerClient.GetServiceLogs(ctx, serviceName, follow, tail)
