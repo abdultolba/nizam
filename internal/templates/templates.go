@@ -22,6 +22,7 @@ type Template struct {
 	Service     config.Service `json:"service"`
 	Tags        []string       `json:"tags"`
 	Variables   []Variable     `json:"variables,omitempty"`
+	SeedPacks   []SeedPack     `json:"seedPacks,omitempty"`
 }
 
 // Variable represents a customizable template variable
@@ -32,6 +33,15 @@ type Variable struct {
 	Required    bool   `json:"required,omitempty"`
 	Type        string `json:"type,omitempty"`       // "string", "int", "bool", "port"
 	Validation  string `json:"validation,omitempty"` // regex or validation rules
+}
+
+// SeedPack represents a seed pack reference in a template
+type SeedPack struct {
+	Name        string `json:"name"`
+	Version     string `json:"version,omitempty"`     // Empty means latest
+	Description string `json:"description,omitempty"`
+	Optional    bool   `json:"optional,omitempty"`
+	AutoInstall bool   `json:"autoInstall,omitempty"` // Install automatically during service creation
 }
 
 // GetBuiltinTemplates returns all built-in service templates
@@ -948,4 +958,50 @@ func ProcessTemplateWithDefaults(tmpl Template) (config.Service, error) {
 	}
 
 	return processedService, nil
+}
+
+// HasSeedPacks returns true if the template has seed pack references
+func (t Template) HasSeedPacks() bool {
+	return len(t.SeedPacks) > 0
+}
+
+// GetAutoInstallSeedPacks returns seed packs marked for auto-installation
+func (t Template) GetAutoInstallSeedPacks() []SeedPack {
+	var autoInstall []SeedPack
+	for _, pack := range t.SeedPacks {
+		if pack.AutoInstall {
+			autoInstall = append(autoInstall, pack)
+		}
+	}
+	return autoInstall
+}
+
+// GetOptionalSeedPacks returns optional seed packs that user can choose to install
+func (t Template) GetOptionalSeedPacks() []SeedPack {
+	var optional []SeedPack
+	for _, pack := range t.SeedPacks {
+		if pack.Optional && !pack.AutoInstall {
+			optional = append(optional, pack)
+		}
+	}
+	return optional
+}
+
+// GetRequiredSeedPacks returns required seed packs that must be installed
+func (t Template) GetRequiredSeedPacks() []SeedPack {
+	var required []SeedPack
+	for _, pack := range t.SeedPacks {
+		if !pack.Optional {
+			required = append(required, pack)
+		}
+	}
+	return required
+}
+
+// GetSeedPackName returns the full name for a seed pack (name@version or just name)
+func (sp SeedPack) GetSeedPackName() string {
+	if sp.Version != "" {
+		return fmt.Sprintf("%s@%s", sp.Name, sp.Version)
+	}
+	return sp.Name
 }
