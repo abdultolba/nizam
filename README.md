@@ -120,7 +120,7 @@ services:
 
 ## Service Templates
 
-nizam includes 17+ built-in service templates for popular development tools:
+nizam includes 17+ built-in service templates for popular development tools, with comprehensive configurations, interactive variables, health checks, and organized documentation.
 
 **Databases:**
 
@@ -151,6 +151,8 @@ nizam includes 17+ built-in service templates for popular development tools:
 **Development Tools:**
 
 - `mailhog` - Email testing
+
+For detailed template documentation, configurations, and contribution guidelines, see [`internal/templates/README.md`](internal/templates/README.md).
 
 ### Using Templates
 
@@ -1083,12 +1085,228 @@ nizam doctor --fix
 - [x] Usage examples and integration patterns
 - [x] Complete unit test coverage with Makefile integration
 
+### Seed Pack System ✅
+
+nizam includes a comprehensive seed pack system for creating, sharing, and managing reusable database datasets with rich metadata.
+
+#### Seed Pack Features
+
+- 🎯 **Enhanced Snapshots**: Convert snapshots into reusable seed packs with rich metadata
+- 📋 **Rich Metadata**: Author, version, license, homepage, tags, use cases, and examples
+- 🔍 **Discovery & Search**: Find packs by name, tags, author, or engine type
+- 📦 **Versioning**: Multiple versions of the same pack with semantic versioning
+- 🏗️ **Template Integration**: Templates can reference seed packs for auto-installation
+- 📁 **Organized Storage**: Structured storage in `.nizam/seeds/<engine>/<pack>/<version>/`
+
+#### Quick Seed Pack Examples
+
+```bash
+# Create a seed pack from a snapshot
+nizam pack create postgres my-snapshot \
+  --name "ecommerce-starter" \
+  --description "Sample e-commerce database with products and users" \
+  --author "Your Name" \
+  --tag "ecommerce" --tag "sample-data"
+
+# List all available seed packs
+nizam pack list
+
+# Search for specific packs
+nizam pack search ecommerce
+nizam pack search --tag "sample-data" --engine postgres
+
+# Install a seed pack to a service
+nizam pack install postgres ecommerce-starter
+nizam pack install postgres ecommerce-starter@1.0.0
+
+# Get detailed pack information
+nizam pack info postgres ecommerce-starter
+
+# Remove old packs
+nizam pack remove postgres ecommerce-starter@1.0.0
+```
+
+#### Seed Pack Commands
+
+**`nizam pack create <service> [snapshot-tag]`**
+
+```bash
+# Create from latest snapshot
+nizam pack create postgres
+
+# Create from specific snapshot with metadata
+nizam pack create postgres my-snapshot \
+  --name "blog-content" \
+  --display-name "Blog Content Pack" \
+  --description "Sample blog with posts, users, and comments" \
+  --author "John Doe" \
+  --version "1.0.0" \
+  --license "MIT" \
+  --homepage "https://github.com/johndoe/blog-seeds" \
+  --tag "blog" --tag "cms" --tag "sample-data" \
+  --use-case "Development and testing" \
+  --use-case "Demo applications"
+
+# Available flags:
+    --name string           Pack name
+    --display-name string   Human-readable pack name
+    --description string    Pack description
+    --author string         Pack author
+    --version string        Pack version (default "1.0.0")
+    --license string        Pack license (default "MIT")
+    --homepage string       Homepage URL
+    --repository string     Repository URL
+    --tag strings           Tags (can be used multiple times)
+    --use-case strings      Use cases (can be used multiple times)
+    --force                 Overwrite existing pack
+```
+
+**`nizam pack list [engine]`**
+
+```bash
+# List all seed packs
+nizam pack list
+
+# List packs for specific engine
+nizam pack list postgres
+nizam pack list redis
+
+# JSON output for automation
+nizam pack list --json
+```
+
+**`nizam pack search [query]`**
+
+```bash
+# Search by name or description
+nizam pack search ecommerce
+nizam pack search blog
+
+# Filter by specific criteria
+nizam pack search --tag "sample-data" --engine postgres
+nizam pack search --author "John Doe"
+nizam pack search --engine redis --tag "cache"
+
+# Available flags:
+    --engine string     Filter by engine type
+    --tag strings       Filter by tags
+    --author string     Filter by author
+    --json              Output in JSON format
+```
+
+**`nizam pack install <service> <pack>`**
+
+```bash
+# Install latest version
+nizam pack install postgres ecommerce-starter
+
+# Install specific version
+nizam pack install postgres ecommerce-starter@1.0.0
+
+# Preview installation
+nizam pack install postgres ecommerce-starter --dry-run
+
+# Force install even if service has data
+nizam pack install postgres ecommerce-starter --force
+
+# Available flags:
+    --dry-run           Show what would be installed
+    --force             Force installation even if errors occur
+```
+
+**`nizam pack info <engine> <pack>`**
+
+```bash
+# Get detailed pack information
+nizam pack info postgres ecommerce-starter
+nizam pack info postgres ecommerce-starter@1.0.0
+
+# Shows:
+# - Description and metadata
+# - Use cases and examples
+# - Dependencies and requirements
+# - Installation instructions
+# - Data size and record counts
+```
+
+**`nizam pack remove <engine> <pack>`**
+
+```bash
+# Remove specific version
+nizam pack remove postgres ecommerce-starter --version 1.0.0
+
+# Remove all versions
+nizam pack remove postgres ecommerce-starter
+```
+
+#### Seed Pack Manifest
+
+Each seed pack includes a comprehensive manifest with metadata:
+
+```json
+{
+  "name": "ecommerce-starter",
+  "displayName": "E-commerce Starter Data",
+  "description": "Sample e-commerce database with products, users, and orders",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "license": "MIT",
+  "homepage": "https://github.com/yourorg/ecommerce-seeds",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "engine": "postgres",
+  "images": ["postgres:16"],
+  "tags": ["ecommerce", "sample-data", "starter"],
+  "dataSize": 2048576,
+  "recordCount": 1500,
+  "compression": "zstd",
+  "useCases": ["Development and testing", "Demo applications"],
+  "examples": [
+    {
+      "title": "List all products",
+      "description": "Get all products with their categories",
+      "query": "SELECT p.name, p.price, c.name as category FROM products p JOIN categories c ON p.category_id = c.id;",
+      "expected": "Returns product names, prices, and categories"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "postgres",
+      "type": "service",
+      "version": "15+",
+      "optional": false
+    }
+  ]
+}
+```
+
+#### Template Integration
+
+Templates can reference seed packs for automatic installation:
+
+```yaml
+# Template with seed pack references
+seedPacks:
+  - name: "ecommerce-starter"
+    version: "1.0.0"
+    description: "Sample e-commerce data"
+    optional: false
+    autoInstall: true
+  - name: "test-data"
+    description: "Additional test data"
+    optional: true
+    autoInstall: false
+```
+
+For complete seed pack documentation and examples, see [`docs/SEED_PACKS.md`](docs/SEED_PACKS.md).
+
 ### Planned Data Lifecycle Features 🔄
 
 - [x] **MySQL Snapshots & CLI**: MySQL database snapshot and one-liner access support ✅
 - [x] **MongoDB Snapshots & CLI**: MongoDB snapshot support and one-liner access ✅
-- [ ] **Seed Pack System**: Versioned, shareable dataset management
-  - [ ] Local seed pack registry with versioning
+- [x] **Seed Pack System**: Versioned, shareable dataset management ✅
+  - [x] Local seed pack registry with versioning ✅
+  - [x] Rich metadata with tags, use cases, and examples ✅
+  - [x] Template integration for auto-installation ✅
   - [ ] Team/remote registry support (Git, URL-based)
   - [ ] Seed pack creation from snapshots with data masking
 - [ ] **Safe Production Imports**: Data masking and sanitization
