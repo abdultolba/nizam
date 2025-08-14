@@ -25,19 +25,19 @@ Seed packs extend the existing snapshot system with:
 
 ### Architecture
 
-```
-.nizam/
-├── snapshots/          # Raw snapshots (managed by snapshot system)
-│   └── service/
-│       └── timestamp/
-└── seeds/              # Organized seed packs
-    └── engine/         # postgres, mysql, redis, etc.
-        └── pack-name/
-            └── version/
-                ├── seedpack.json    # Manifest with metadata
-                ├── README.md        # Auto-generated documentation
-                └── dump.sql         # Data files (copied from snapshot)
-```
+<pre>
+<span style="color:#00bcd4;">.nizam/</span>
+├── <span style="color:#f0ad4e;">snapshots/</span>          <span style="color:#8a8f98;"># Raw snapshots (managed by snapshot system)</span>
+│   └── <span style="color:#f0ad4e;">service/</span>
+│       └── <span style="color:#f0ad4e;">timestamp/</span>
+└── <span style="color:#f0ad4e;">seeds/</span>              <span style="color:#8a8f98;"># Organized seed packs</span>
+    └── <span style="color:#f0ad4e;">engine/</span>         <span style="color:#8a8f98;"># postgres, mysql, redis, etc.</span>
+        └── <span style="color:#f0ad4e;">pack-name/</span>
+            └── <span style="color:#f0ad4e;">version/</span>
+                ├── <span style="color:#5cb85c;">seedpack.json</span>    <span style="color:#8a8f98;"># Manifest with metadata</span>
+                ├── <span style="color:#5cb85c;">README.md</span>        <span style="color:#8a8f98;"># Auto-generated documentation</span>
+                └── <span style="color:#5cb85c;">dump.sql</span>         <span style="color:#8a8f98;"># Data files (copied from snapshot)</span>
+</pre>
 
 ## Creating Seed Packs
 
@@ -103,10 +103,7 @@ Each seed pack includes a `seedpack.json` manifest with comprehensive metadata:
   "dataSize": 2048576,
   "recordCount": 1500,
   "compression": "zstd",
-  "useCases": [
-    "Development and testing",
-    "Demo applications"
-  ],
+  "useCases": ["Development and testing", "Demo applications"],
   "examples": [
     {
       "title": "List all products",
@@ -273,6 +270,7 @@ nizam create ecommerce-dev mystore
 ### E-commerce Starter Pack
 
 A comprehensive e-commerce database with:
+
 - Users and authentication
 - Products and categories
 - Shopping carts and orders
@@ -295,6 +293,7 @@ nizam pack create postgres ecommerce-snapshot \
 ### Blog Content Pack
 
 A simple blog database with:
+
 - Posts and comments
 - Users and authors
 - Categories and tags
@@ -312,6 +311,7 @@ nizam pack create postgres blog-snapshot \
 ### Analytics Sample Pack
 
 Analytics data for testing:
+
 - Events and metrics
 - User behavior data
 - Time-series data
@@ -329,6 +329,7 @@ nizam pack create clickhouse analytics-snapshot \
 ### Redis Cache Pack
 
 Redis data for session management:
+
 - Session data
 - Cache entries
 - Rate limiting data
@@ -417,11 +418,13 @@ Some seed packs might work with multiple database engines:
 ### Common Issues
 
 1. **Pack Not Found**: Check engine name and pack availability
+
    ```bash
    nizam pack list postgres  # List available postgres packs
    ```
 
 2. **Installation Fails**: Check service is running and healthy
+
    ```bash
    nizam status postgres  # Check service status
    ```
