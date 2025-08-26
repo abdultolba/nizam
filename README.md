@@ -748,9 +748,94 @@ mysql -h localhost -P 3306 -u myuser -pmypass mydb
 docker exec -it nizam_mysql mysql -u myuser -h localhost -pmypass mydb
 ```
 
-## Development & Operations Tools 🛠️
+## Vector Databases (Pinecone Local)
+
+Nizam supports local development with Pinecone via official Docker images. Two templates are available:
+
+- `pinecone-local`: Database emulator that lets you create, list, and manage multiple indexes using the Pinecone API locally.
+- `pinecone-index`: Single index emulator, useful when you want a specific index configuration (dense or sparse) on a fixed port.
+
+These are intended for local development only.
+
+Quick start: `pinecone-local` (database emulator)
+
+```bash path=null start=null
+# Add and start the Pinecone Local database emulator
+nizam add pinecone-local --defaults
+nizam up pinecone-local
+```
+
+- Exposes ports 5080-5090 (5080 is the control plane; indexes bind to 5081-5090).
+- Environment defaults: PORT=5080, PINECONE_HOST=localhost.
+
+Quick start: pinecone-index (single index emulator)
+
+```bash path=null start=null
+# Add with defaults (dense index on port 5081)
+nizam add pinecone-index --defaults
+nizam up pinecone-index
+```
+
+Customize the index type and vector settings interactively:
+
+```bash path=null start=null
+# Add a sparse index (set VECTOR_TYPE=sparse, DIMENSION=0, METRIC=dotproduct)
+nizam add pinecone-index
+# Follow prompts:
+#   PORT=5082
+#   INDEX_TYPE=serverless
+#   VECTOR_TYPE=sparse
+#   DIMENSION=0
+#   METRIC=dotproduct
+nizam up pinecone-index
+```
+
+Run multiple index emulators by naming services:
+
+```bash path=null start=null
+nizam add pinecone-index --name dense-index --defaults
+nizam add pinecone-index --name sparse-index
+# set sparse params when prompted
+nizam up dense-index sparse-index
+```
+
+Client example (Python)
+
+- Pinecone Local ignores API keys; use any placeholder (for clarity we use "pclocal").
+- For database emulator, connect to http://localhost:5080; for index emulator, connect to http://localhost:<PORT> (e.g., 5081).
+
+```python path=null start=null
+from pinecone.grpc import PineconeGRPC
+
+# Database emulator (pinecone-local)
+pc = PineconeGRPC(api_key="pclocal", host="http://localhost:5080")
+# Example: ensure an index exists (dense vectors)
+if not pc.has_index("demo-dense"):
+    pc.create_index(
+        name="demo-dense",
+        vector_type="dense",
+        dimension=1536,
+        metric="cosine",
+        spec={"cloud": "aws", "region": "us-east-1"},  # ignored locally but required by SDK
+        deletion_protection="disabled",
+    )
+
+# Index emulator (pinecone-index at :5081)
+idx = PineconeGRPC(api_key="pclocal", host="http://localhost:5081")
+# Use idx to upsert/query against the single running index
+```
+
+Notes and limitations
+
+- In-memory only: data is not persisted after container stop.
+- No auth: API keys are ignored in Pinecone Local.
+- Limits: up to ~100k records per index (subject to Pinecone Local limits).
+- API: uses Pinecone API version 2025-01; ensure you use recent SDK versions (Python v6+, Node v5+, etc.).
+- Not for production. For deployment, switch to a real Pinecone account.
 
 nizam includes comprehensive tooling for development workflow optimization, environment validation, and operational reliability.
+
+## Development & Operations Tools 🛠️
 
 ### Environment Doctor (`nizam doctor`)
 

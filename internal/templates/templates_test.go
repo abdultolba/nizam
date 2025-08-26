@@ -16,6 +16,7 @@ func TestAllBuiltinTemplates(t *testing.T) {
 		"postgres", "postgres-15", "mysql", "mongodb", "redis", "redis-stack",
 		"clickhouse", "elasticsearch", "meilisearch", "rabbitmq", "kafka",
 		"minio", "nats", "prometheus", "grafana", "jaeger", "mailhog",
+		"pinecone-local", "pinecone-index",
 	}
 
 	// Check that all expected templates exist

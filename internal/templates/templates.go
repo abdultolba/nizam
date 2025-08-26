@@ -549,6 +549,72 @@ func GetBuiltinTemplates() map[string]Template {
 				},
 			},
 		},
+		"pinecone-local": {
+			Name:        "pinecone-local",
+			Description: "Pinecone Local (database emulator) for local development",
+			Tags:        []string{"vector", "pinecone"},
+			Service: config.Service{
+				Image: "ghcr.io/pinecone-io/pinecone-local:latest",
+				Ports: []string{"5080:5080", "5081:5081", "5082:5082", "5083:5083", "5084:5084", "5085:5085", "5086:5086", "5087:5087", "5088:5088", "5089:5089", "5090:5090"},
+				Environment: map[string]string{
+					"PORT":          "5080",
+					"PINECONE_HOST": "localhost",
+				},
+			},
+		},
+		"pinecone-index": {
+			Name:        "pinecone-index",
+			Description: "Pinecone Index emulator (single index)",
+			Tags:        []string{"vector", "pinecone"},
+			Service: config.Service{
+				Image: "ghcr.io/pinecone-io/pinecone-index:latest",
+				Ports: []string{"{{.PORT}}:{{.PORT}}"},
+				Environment: map[string]string{
+					"PORT":        "{{.PORT}}",
+					"INDEX_TYPE":  "{{.INDEX_TYPE}}",
+					"VECTOR_TYPE": "{{.VECTOR_TYPE}}",
+					"DIMENSION":   "{{.DIMENSION}}",
+					"METRIC":      "{{.METRIC}}",
+				},
+			},
+			Variables: []Variable{
+				{
+					Name:        "PORT",
+					Description: "Host/container port for the index emulator",
+					Default:     "5081",
+					Required:    false,
+					Type:        "port",
+				},
+				{
+					Name:        "INDEX_TYPE",
+					Description: "Pinecone index type (serverless or pod)",
+					Default:     "serverless",
+					Required:    false,
+					Type:        "string",
+				},
+				{
+					Name:        "VECTOR_TYPE",
+					Description: "Vector type (dense or sparse)",
+					Default:     "dense",
+					Required:    false,
+					Type:        "string",
+				},
+				{
+					Name:        "DIMENSION",
+					Description: "Vector dimension (0 for sparse; typical dense is 1536)",
+					Default:     "1536",
+					Required:    false,
+					Type:        "int",
+				},
+				{
+					Name:        "METRIC",
+					Description: "Similarity metric (cosine, euclidean, dotproduct)",
+					Default:     "cosine",
+					Required:    false,
+					Type:        "string",
+				},
+			},
+		},
 	}
 }
 

@@ -4,11 +4,12 @@ This directory contains the built-in service templates that power `nizam`'s quic
 
 ## Overview
 
-Nizam includes **17 built-in templates** across different categories:
+Nizam includes **19 built-in templates** across different categories:
 - **7 Database templates** for different storage and analytics needs
 - **3 Messaging templates** for event streaming and queuing
 - **3 Monitoring templates** for observability and metrics
 - **2 Search templates** for full-text and analytics search
+- **2 Vector templates** for embeddings and vector search (Pinecone Local)
 - **1 Storage template** for object storage
 - **1 Development tool** for email testing
 
@@ -130,6 +131,59 @@ Nizam includes **17 built-in templates** across different categories:
 - **Ports**: 7700
 - **Configuration**: Analytics disabled for privacy
 - **Tags**: `search`, `meilisearch`
+
+### 🧠 Vector Databases
+
+#### Pinecone Local
+- **Template**: `pinecone-local`
+- **Image**: `ghcr.io/pinecone-io/pinecone-local:latest`
+- **Description**: In-memory Pinecone database emulator for local development (control plane + dynamic index ports)
+- **Ports**: 5080-5090 (5080 is control plane; indexes bind to 5081-5090)
+- **Tags**: `vector`, `pinecone`
+- **Notes**: Local dev only; data does not persist after stop; API keys are ignored.
+
+Usage:
+
+```bash path=null start=null
+nizam add pinecone-local --defaults
+nizam up pinecone-local
+```
+
+#### Pinecone Index
+- **Template**: `pinecone-index`
+- **Image**: `ghcr.io/pinecone-io/pinecone-index:latest`
+- **Description**: Single index emulator for a specific dense or sparse index
+- **Ports**: Configurable (default 5081)
+- **Interactive Variables**: `PORT`, `INDEX_TYPE` (serverless/pod), `VECTOR_TYPE` (dense/sparse), `DIMENSION` (e.g. 1536 or 0 for sparse), `METRIC` (cosine/euclidean/dotproduct)
+- **Tags**: `vector`, `pinecone`
+
+Usage (dense default):
+
+```bash path=null start=null
+nizam add pinecone-index --defaults
+nizam up pinecone-index
+```
+
+Usage (sparse):
+
+```bash path=null start=null
+nizam add pinecone-index
+# When prompted set:
+#   PORT=5082
+#   INDEX_TYPE=serverless
+#   VECTOR_TYPE=sparse
+#   DIMENSION=0
+#   METRIC=dotproduct
+nizam up pinecone-index
+```
+
+Run multiple indices by naming services:
+
+```bash path=null start=null
+nizam add pinecone-index --name dense-index --defaults
+nizam add pinecone-index --name sparse-index
+nizam up dense-index sparse-index
+```
 
 ### 📦 Storage
 
